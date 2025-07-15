@@ -9,7 +9,9 @@ include "Q/IR/QTypes.td"
 class Q_Op<string mnemonic, list<Trait> traits = []> :
         Op<Q_Dialect, mnemonic, traits>;
 
-def KernelOp : Q_Op<"kernel", [Symbol, NoTerminator]> { // TODO: Change NoTerminator to actual return.
+// TODO: Change NoTerminator to actual return.
+// TODO: A kernel could take `nqubits` as input and automatically alloc and free a register.
+def KernelOp : Q_Op<"kernel", [Symbol, NoTerminator]> {
     let summary = "A quantum kernel.";
     let arguments = (ins SymbolNameAttr: $sym_name);
     let results = (outs);

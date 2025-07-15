@@ -7,7 +7,7 @@ include "mlir/IR/OpBase.td"
 def Q_Dialect : Dialect {
     let name = "q";
     let summary = "A wanna-be quantum compiler.";
-    let cppNamespace = "::qompiler";
+    let cppNamespace = "::aqomplice";
     let useDefaultTypePrinterParser = 1;
 }
 

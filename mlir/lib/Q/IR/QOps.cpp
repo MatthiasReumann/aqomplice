@@ -5,7 +5,7 @@
 #include "Q/IR/QDialect.h"
 
 using namespace mlir;
-using namespace qompiler;
+using namespace aqomplice;
 
 #define GET_OP_CLASSES
 #include "Q/IR/QOps.cpp.inc"

@@ -1,3 +1,3 @@
-# qompiler
+# aqomplice
 
-Playground for quantum compilation.
+A wanna-be quantum compiler.

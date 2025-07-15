@@ -8,7 +8,7 @@
 #include "Q/IR/QDialect.h"
 
 using namespace mlir;
-using namespace qompiler;
+using namespace aqomplice;
 
 #include "Q/IR/QOpsDialect.cpp.inc"
 

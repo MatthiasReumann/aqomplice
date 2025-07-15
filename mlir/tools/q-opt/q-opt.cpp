@@ -7,7 +7,7 @@
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
-  registry.insert<qompiler::QDialect, mlir::arith::ArithDialect>();
+  registry.insert<aqomplice::QDialect, mlir::arith::ArithDialect>();
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
