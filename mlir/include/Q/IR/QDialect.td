@@ -11,7 +11,4 @@ def Q_Dialect : Dialect {
     let useDefaultTypePrinterParser = 1;
 }
 
-class Q_Op<string mnemonic, list<Trait> traits = []> :
-        Op<Q_Dialect, mnemonic, traits>;
-
 #endif // Q_DIALECT
