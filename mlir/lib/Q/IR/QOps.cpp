@@ -1,10 +1,8 @@
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/OpImplementation.h"
-
-#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h" // IWYU pragma: keep
+#include "mlir/IR/Builders.h"             // IWYU pragma: keep
+#include "mlir/IR/OpImplementation.h"     // IWYU pragma: keep
 
 #include "Q/IR/QDialect.h"
-#include "Q/IR/QOps.h"
 
 using namespace mlir;
 using namespace qompiler;

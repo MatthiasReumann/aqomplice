@@ -25,3 +25,4 @@ add_definitions(${LLVM_DEFINITIONS})
 
 add_subdirectory(include/Q/IR)
 add_subdirectory(lib/Q/IR)
+add_subdirectory(tools/q-opt)

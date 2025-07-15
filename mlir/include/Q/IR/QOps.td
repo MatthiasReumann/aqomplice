@@ -1,7 +1,7 @@
 #ifndef Q_OPS
 #define Q_OPS
 
-include "mlir/Interfaces/FunctionInterfaces.td"
+include "mlir/IR/SymbolInterfaces.td"
 
 include "Q/IR/QDialect.td"
 include "Q/IR/QTypes.td"
@@ -9,10 +9,11 @@ include "Q/IR/QTypes.td"
 class Q_Op<string mnemonic, list<Trait> traits = []> :
         Op<Q_Dialect, mnemonic, traits>;
 
-def KernelOp : Q_Op<"kernel", [FunctionOpInterface]> {
+def KernelOp : Q_Op<"kernel", [Symbol, NoTerminator]> { // TODO: Change NoTerminator to actual return.
     let summary = "A quantum kernel.";
-    let arguments = (ins SymbolNameAttr: $sym_name, TypeAttrOf<FunctionType>: $function_type);
-    let regions = (region AnyRegion: $body);
+    let arguments = (ins SymbolNameAttr: $sym_name);
+    let results = (outs);
+    let regions = (region AnyRegion: $body); // TODO: Custom AnyRegion?
 }
 
 class Memory_Op<string mnemonic, list<Trait> traits = []> : Q_Op<mnemonic, traits>;

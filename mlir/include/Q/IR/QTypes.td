@@ -8,11 +8,11 @@ class Q_Type<string name, string typeMnemonic, list<Trait> traits = []>
     let mnemonic = typeMnemonic;
 }
 
-def QubitType : Q_Type<"Qubit", "qubit"> {
+def QubitType : Q_Type<"Qubit", "Qubit"> {
     let summary = "A qubit.";
 }
 
-def QuantumRegisterType : Q_Type<"QubitRegister", "reg"> {
+def QuantumRegisterType : Q_Type<"QubitRegister", "QubitRegister"> {
     let summary = "An array of qubits.";
 }
 
