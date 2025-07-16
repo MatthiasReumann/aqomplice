@@ -48,3 +48,25 @@ void KernelOp::print(OpAsmPrinter &p) {
       p, *this, /*isVariadic=*/false, getFunctionTypeAttrName(),
       getArgAttrsAttrName(), getResAttrsAttrName());
 }
+
+/// Return the callee of the generic call operation, this is required by the
+/// call interface.
+CallInterfaceCallable CallOp::getCallableForCallee() {
+  return (*this)->getAttrOfType<SymbolRefAttr>("callee");
+}
+
+/// Set the callee for the generic call operation, this is required by the call
+/// interface.
+void CallOp::setCalleeFromCallable(CallInterfaceCallable callee) {
+  (*this)->setAttr("callee", cast<SymbolRefAttr>(callee));
+}
+
+/// Get the argument operands to the called function, this is required by the
+/// call interface.
+Operation::operand_range CallOp::getArgOperands() { return getOperands(); }
+
+/// Get the argument operands to the called function as a mutable range, this is
+/// required by the call interface.
+MutableOperandRange CallOp::getArgOperandsMutable() {
+  return getOperandsMutable();
+}

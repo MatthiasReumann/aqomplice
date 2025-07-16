@@ -12,7 +12,7 @@ class Q_Op<string mnemonic, list<Trait> traits = []>
     : Op<Q_Dialect, mnemonic, traits>;
 
 def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
-  let summary = "A quantum kernel.";
+  let summary = "a quantum kernel.";
   let arguments = (ins SymbolNameAttr:$sym_name,
       TypeAttrOf<FunctionType>:$function_type,
       OptionalAttr<DictArrayAttr>:$arg_attrs,
@@ -42,9 +42,24 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 }
 
 def ReturnOp : Q_Op<"return", [Pure, Terminator, HasParent<"KernelOp">]> {
-  let summary = "Return from quantum kernel.";
+  let summary = "returns from a quantum kernel.";
   let description = [{}];
   let arguments = (ins MeasurementResultType:$input);
+}
+
+def CallOp : Q_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
+  let summary = "calls quantum kernel.";
+  let description = [{}];
+  let arguments = (ins
+    FlatSymbolRefAttr:$callee,
+    Variadic<AnyType>:$operands,
+    OptionalAttr<DictArrayAttr>:$arg_attrs,
+    OptionalAttr<DictArrayAttr>:$res_attrs
+  );
+  let results = (outs MeasurementResultType);
+  let assemblyFormat = [{ 
+    $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
+  }];
 }
 
 class Memory_Op<string mnemonic, list<Trait> traits = []>

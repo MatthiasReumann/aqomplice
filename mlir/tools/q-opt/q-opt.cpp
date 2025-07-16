@@ -5,7 +5,7 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-#include "Q/IR/QDialect.h" // IWYU pragma: keep
+#include "Q/IR/QDialect.h"
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
