@@ -12,7 +12,7 @@ class Q_Op<string mnemonic, list<Trait> traits = []>
     : Op<Q_Dialect, mnemonic, traits>;
 
 def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
-  let summary = "a quantum kernel.";
+  let summary = "quantum kernel";
   let arguments = (ins SymbolNameAttr:$sym_name,
       TypeAttrOf<FunctionType>:$function_type,
       OptionalAttr<DictArrayAttr>:$arg_attrs,
@@ -42,13 +42,13 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 }
 
 def ReturnOp : Q_Op<"return", [Pure, Terminator, HasParent<"KernelOp">]> {
-  let summary = "returns from a quantum kernel.";
+  let summary = "return from quantum kernel";
   let description = [{}];
   let arguments = (ins MeasurementResultType:$input);
 }
 
 def CallOp : Q_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
-  let summary = "calls quantum kernel.";
+  let summary = "call quantum kernel";
   let description = [{}];
   let arguments = (ins
     FlatSymbolRefAttr:$callee,
@@ -66,7 +66,7 @@ class Memory_Op<string mnemonic, list<Trait> traits = []>
     : Q_Op<mnemonic, traits>;
 
 def AllocOp : Memory_Op<"allocreg", [HasParent<"KernelOp">]> {
-  let summary = "Allocate n qubits into a quantum register.";
+  let summary = "allocate n qubits into a quantum register";
   let description = [{
     Ensures implicitly that all other quantum 
     operations are placed inside a kernel.
@@ -82,14 +82,14 @@ def FreeOp : Memory_Op<"freereg"> {
 }
 
 def RetrieveOp : Memory_Op<"retrieve"> {
-  let summary = "Retrieve a qubit from a quantum register at a given index.";
+  let summary = "retrieve a qubit from a quantum register at a given index";
   let description = [{}];
   let arguments = (ins QubitArrayType:$qreg, I64:$index);
   let results = (outs QubitType:$qubit);
 }
 
 def MeasureOp : Q_Op<"measure"> {
-  let summary = "Measure in the computational basis.";
+  let summary = "measure in the computational basis";
   let description = [{}];
   let arguments = (ins AnyTypeOf<[QubitType, QubitArrayType]>:$target);
   let results = (outs MeasurementResultType:$res);
@@ -103,35 +103,35 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : Q_Op<mnemonic, traits#[Unitary]>;
 
 def HOp : Gate_Op<"h", [Hermitian]> {
-  let summary = "Apply H operation to target qubit.";
+  let summary = "apply H operation to target qubit";
   let description = [{}];
   let arguments = (ins QubitType:$target);
   let results = (outs);
 }
 
 def XOp : Gate_Op<"x", [Hermitian]> {
-  let summary = "Apply X operation to target qubit.";
+  let summary = "apply X operation to target qubit";
   let description = [{}];
   let arguments = (ins QubitType:$target);
   let results = (outs);
 }
 
 def YOp : Gate_Op<"y", [Hermitian]> {
-  let summary = "Apply Y operation to target qubit.";
+  let summary = "apply Y operation to target qubit";
   let description = [{}];
   let arguments = (ins QubitType:$target);
   let results = (outs);
 }
 
 def ZOp : Gate_Op<"z", [Hermitian]> {
-  let summary = "Apply Z operation to target qubit.";
+  let summary = "apply Z operation to target qubit";
   let description = [{}];
   let arguments = (ins QubitType:$target);
   let results = (outs);
 }
 
 def CXOp : Gate_Op<"cx", [Hermitian, Controlled]> {
-  let summary = "Apply controlled-X operation to target qubit";
+  let summary = "apply controlled-X operation to target qubit";
   let description = [{}];
   let arguments = (ins QubitType:$target, QubitType:$control);
   let results = (outs);

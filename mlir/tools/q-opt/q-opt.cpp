@@ -9,7 +9,7 @@
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
-  registry.insert<aqomplice::QDialect, mlir::arith::ArithDialect,
+  registry.insert<aqomplice::q::QDialect, mlir::arith::ArithDialect,
                   mlir::memref::MemRefDialect, mlir::scf::SCFDialect>();
 
   return mlir::asMainReturnCode(
