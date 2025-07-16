@@ -2,7 +2,6 @@
 #define Q_TYPES
 
 include "Q/IR/QDialect.td"
-
 include "mlir/IR/CommonTypeConstraints.td"
 
 class Q_Type<string name, string typeMnemonic, list<Trait> traits = []>
@@ -11,15 +10,15 @@ class Q_Type<string name, string typeMnemonic, list<Trait> traits = []>
 }
 
 def QubitType : Q_Type<"Qubit", "Qubit"> {
-    let summary = "a qubit.";
+    let summary = "a qubit";
 }
 
 def QubitArrayType : Q_Type<"QubitArray", "QubitArray"> {
-    let summary = "a qubit-array.";
+    let summary = "a qubit-array";
 }
 
 def BitArrayType : MemRefOf<[I1]> {
-    let summary = "a bit-array.";
+    let summary = "a bit-array";
 }
 
 def MeasurementResultType : AnyTypeOf<[I1, BitArrayType]> {}
