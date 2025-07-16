@@ -5,7 +5,6 @@ include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-
 include "Q/IR/QDialect.td"
 include "Q/IR/QTypes.td"
 
@@ -20,7 +19,8 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
       OptionalAttr<DictArrayAttr>:$res_attrs);
   let regions = (region AnyRegion:$body);
 
-  let builders = [OpBuilder<(ins "mlir::StringRef":$name, "mlir::FunctionType":$type,
+  let builders = [OpBuilder<(ins "mlir::StringRef":$name,
+      "mlir::FunctionType":$type,
       CArg<"mlir::ArrayRef<mlir::NamedAttribute>", "{}">:$attrs)>];
 
   let extraClassDeclaration = [{
@@ -48,11 +48,14 @@ def ReturnOp : Q_Op<"return", [Pure, Terminator, HasParent<"KernelOp">]> {
 }
 
 class Memory_Op<string mnemonic, list<Trait> traits = []>
-    : Q_Op<mnemonic, traits#[HasParent<"KernelOp">]>;
+    : Q_Op<mnemonic, traits>;
 
-def AllocOp : Memory_Op<"allocreg"> {
+def AllocOp : Memory_Op<"allocreg", [HasParent<"KernelOp">]> {
   let summary = "Allocate n qubits into a quantum register.";
-  let description = [{}];
+  let description = [{
+    Ensures implicitly that all other quantum 
+    operations are placed inside a kernel.
+  }];
   let arguments = (ins I64:$nqubits);
   let results = (outs QubitArrayType:$qreg);
 }
@@ -70,11 +73,11 @@ def RetrieveOp : Memory_Op<"retrieve"> {
   let results = (outs QubitType:$qubit);
 }
 
-def MeasureOp : Q_Op<"measure", [HasParent<"KernelOp">]> {
-    let summary = "Measure in the computational basis.";
-    let description = [{}];
-    let arguments = (ins AnyTypeOf<[QubitType, QubitArrayType]>:$target);
-    let results = (outs MeasurementResultType:$res);
+def MeasureOp : Q_Op<"measure"> {
+  let summary = "Measure in the computational basis.";
+  let description = [{}];
+  let arguments = (ins AnyTypeOf<[QubitType, QubitArrayType]>:$target);
+  let results = (outs MeasurementResultType:$res);
 }
 
 def Unitary : NativeOpTrait<"UnitaryTrait">;
@@ -82,7 +85,7 @@ def Hermitian : NativeOpTrait<"HermitianTrait">;
 def Controlled : NativeOpTrait<"ControlledTrait">;
 
 class Gate_Op<string mnemonic, list<Trait> traits = []>
-    : Q_Op<mnemonic, traits#[Unitary, HasParent<"KernelOp">]>;
+    : Q_Op<mnemonic, traits#[Unitary]>;
 
 def HOp : Gate_Op<"h", [Hermitian]> {
   let summary = "Apply H operation to target qubit.";
