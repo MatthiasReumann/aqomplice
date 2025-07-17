@@ -5,6 +5,8 @@ include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
+include "meta/traits.td"
+
 include "Q/IR/QDialect.td"
 include "Q/IR/QTypes.td"
 
@@ -94,10 +96,6 @@ def MeasureOp : Q_Op<"measure"> {
   let arguments = (ins AnyTypeOf<[QubitType, QubitArrayType]>:$target);
   let results = (outs MeasurementResultType:$res);
 }
-
-def Unitary : NativeOpTrait<"UnitaryTrait">;
-def Hermitian : NativeOpTrait<"HermitianTrait">;
-def Controlled : NativeOpTrait<"ControlledTrait">;
 
 class Gate_Op<string mnemonic, list<Trait> traits = []>
     : Q_Op<mnemonic, traits#[Unitary]>;
