@@ -10,7 +10,6 @@ include "meta/traits.td"
 include "QZap/IR/QZapDialect.td"
 include "QZap/IR/QZapTypes.td"
 
-
 class QZap_Op<string mnemonic, list<Trait> traits = []>
     : Op<QZap_Dialect, mnemonic, traits>;
 
@@ -26,17 +25,10 @@ def KernelOp : QZap_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
       "mlir::FunctionType":$type,
       CArg<"mlir::ArrayRef<mlir::NamedAttribute>", "{}">:$attrs)>];
 
+  // Add FunctionOpInterface methods
   let extraClassDeclaration = [{
-        //===------------------------------------------------------------------===//
-        // FunctionOpInterface Methods
-        //===------------------------------------------------------------------===//
-
-        /// Returns the argument types of this function.
         mlir::ArrayRef<mlir::Type> getArgumentTypes() { return getFunctionType().getInputs(); }
-
-        /// Returns the result types of this function.
         mlir::ArrayRef<mlir::Type> getResultTypes() { return getFunctionType().getResults(); }
-
         mlir::Region *getCallableRegion() { return &getBody(); }
     }];
 

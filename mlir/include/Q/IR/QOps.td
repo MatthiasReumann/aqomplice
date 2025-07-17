@@ -25,17 +25,10 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
       "mlir::FunctionType":$type,
       CArg<"mlir::ArrayRef<mlir::NamedAttribute>", "{}">:$attrs)>];
 
+  // Add FunctionOpInterface methods
   let extraClassDeclaration = [{
-        //===------------------------------------------------------------------===//
-        // FunctionOpInterface Methods
-        //===------------------------------------------------------------------===//
-
-        /// Returns the argument types of this function.
         mlir::ArrayRef<mlir::Type> getArgumentTypes() { return getFunctionType().getInputs(); }
-
-        /// Returns the result types of this function.
         mlir::ArrayRef<mlir::Type> getResultTypes() { return getFunctionType().getResults(); }
-
         mlir::Region *getCallableRegion() { return &getBody(); }
     }];
 

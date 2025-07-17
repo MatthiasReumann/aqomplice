@@ -27,6 +27,9 @@ add_definitions(${LLVM_DEFINITIONS})
 add_subdirectory(include/Q/IR)
 add_subdirectory(lib/Q/IR)
 
+add_subdirectory(include/Q/Conversion/ToQZap)
+add_subdirectory(lib/Q/Conversion/ToQZap)
+
 # QZap Dialect 
 add_subdirectory(include/QZap/IR)
 add_subdirectory(lib/QZap/IR)
