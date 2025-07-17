@@ -9,7 +9,7 @@
 namespace aqomplice {
 namespace q {
 #define GEN_PASS_DEF_QTOQZAP
-#include "Q/Conversion/ToQZap/QToQZap.h.inc"
+#include "Q/Conversion/ToQZap/QToQZap.h.inc" // adds `impl::QToQZapBase`
 
 struct QTQZap : impl::QToQZapBase<QTQZap> {
   using QToQZapBase::QToQZapBase;

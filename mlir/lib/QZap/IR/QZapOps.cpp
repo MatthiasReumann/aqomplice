@@ -1,3 +1,5 @@
+#include "QZap/IR/QZapDialect.h"
+
 #include "mlir/Dialect/Func/IR/FuncOps.h"           // IWYU pragma: keep
 #include "mlir/IR/Attributes.h"                     // IWYU pragma: keep
 #include "mlir/IR/Builders.h"                       // IWYU pragma: keep
@@ -11,13 +13,12 @@
 #include "llvm/ADT/ArrayRef.h"                      // IWYU pragma: keep
 #include "llvm/ADT/StringRef.h"                     // IWYU pragma: keep
 
-#include "QZap/IR/QZapDialect.h"
-
-using namespace mlir;
-using namespace aqomplice::qzap;
-
 #define GET_OP_CLASSES
-#include "QZap/IR/QZapOps.cpp.inc"
+#include "QZap/IR/QZapOps.cpp.inc" // adds ops logic
+
+namespace aqomplice {
+namespace qzap {
+using namespace mlir;
 
 void KernelOp::build(OpBuilder &builder, OperationState &state,
                      llvm::StringRef name, FunctionType type,
@@ -36,37 +37,47 @@ ParseResult KernelOp::parse(OpAsmParser &parser, OperationState &result) {
          std::string &) { return builder.getFunctionType(argTypes, results); };
 
   return function_interface_impl::parseFunctionOp(
-      parser, result, /*allowVariadic=*/false,
-      getFunctionTypeAttrName(result.name), buildFuncType,
-      getArgAttrsAttrName(result.name), getResAttrsAttrName(result.name));
+      parser, result, false, getFunctionTypeAttrName(result.name),
+      buildFuncType, getArgAttrsAttrName(result.name),
+      getResAttrsAttrName(result.name));
 }
 
 void KernelOp::print(OpAsmPrinter &p) {
   // Dispatch to the FunctionOpInterface provided utility method that prints the
   // function operation.
   function_interface_impl::printFunctionOp(
-      p, *this, /*isVariadic=*/false, getFunctionTypeAttrName(),
-      getArgAttrsAttrName(), getResAttrsAttrName());
+      p, *this, false, getFunctionTypeAttrName(), getArgAttrsAttrName(),
+      getResAttrsAttrName());
 }
 
-/// Return the callee of the generic call operation, this is required by the
-/// call interface.
+/**
+ * @brief Return the callee of the generic call operation.
+ * @note This is required by the call interface.
+ */
 CallInterfaceCallable CallOp::getCallableForCallee() {
   return (*this)->getAttrOfType<SymbolRefAttr>("callee");
 }
 
-/// Set the callee for the generic call operation, this is required by the call
-/// interface.
+/**
+ * @brief Set the callee for the generic call operation.
+ * @note This is required by the call interface.
+ */
 void CallOp::setCalleeFromCallable(CallInterfaceCallable callee) {
   (*this)->setAttr("callee", cast<SymbolRefAttr>(callee));
 }
 
-/// Get the argument operands to the called function, this is required by the
-/// call interface.
+/**
+ * @brief Get the argument operands to the called function.
+ * @note This is required by the call interface.
+ */
 Operation::operand_range CallOp::getArgOperands() { return getOperands(); }
 
-/// Get the argument operands to the called function as a mutable range, this is
-/// required by the call interface.
+/**
+ * @brief Get the argument operands to the called function as a mutable range.
+ * @note This is required by the call interface.
+ */
 MutableOperandRange CallOp::getArgOperandsMutable() {
   return getOperandsMutable();
 }
+}; // namespace qzap
+}; // namespace aqomplice
