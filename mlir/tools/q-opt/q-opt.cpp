@@ -6,11 +6,13 @@
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
 #include "Q/IR/QDialect.h"
+#include "QZap/IR/QZapDialect.h"
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
-  registry.insert<aqomplice::q::QDialect, mlir::arith::ArithDialect,
-                  mlir::memref::MemRefDialect, mlir::scf::SCFDialect>();
+  registry.insert<aqomplice::q::QDialect, aqomplice::qzap::QZapDialect,
+                  mlir::arith::ArithDialect, mlir::memref::MemRefDialect,
+                  mlir::scf::SCFDialect>();
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
