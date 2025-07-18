@@ -26,11 +26,12 @@
 #ifndef AQOMPLICE_QZAPOPS_H
 #define AQOMPLICE_QZAPOPS_H
 
-#include "mlir/IR/BuiltinTypes.h"                 // IWYU pragma: keep
-#include "mlir/IR/Dialect.h"                      // IWYU pragma: keep
-#include "mlir/IR/OpDefinition.h"                 // IWYU pragma: keep
-#include "mlir/Interfaces/InferTypeOpInterface.h" // IWYU pragma: keep
-#include "mlir/Interfaces/SideEffectInterfaces.h" // IWYU pragma: keep
+#include "mlir/IR/BuiltinTypes.h"                  // IWYU pragma: keep
+#include "mlir/IR/Dialect.h"                       // IWYU pragma: keep
+#include "mlir/IR/OpDefinition.h"                  // IWYU pragma: keep
+#include "mlir/Interfaces/ControlFlowInterfaces.h" // IWYU pragma: keep
+#include "mlir/Interfaces/InferTypeOpInterface.h"  // IWYU pragma: keep
+#include "mlir/Interfaces/SideEffectInterfaces.h"  // IWYU pragma: keep
 
 #include "meta/traits.h" // IWYU pragma: keep
 

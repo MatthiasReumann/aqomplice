@@ -4,6 +4,9 @@
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Interfaces/InferTypeOpInterface.td"
+include "mlir/Interfaces/ControlFlowInterfaces.td"
+include "mlir/IR/SymbolInterfaces.td"
 
 include "meta/traits.td"
 
@@ -21,7 +24,8 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
       OptionalAttr<DictArrayAttr>:$res_attrs);
   let regions = (region AnyRegion:$body);
 
-  let builders = [OpBuilder<(ins "mlir::StringRef":$name,
+  let builders = [
+      OpBuilder<(ins "mlir::StringRef":$name,
       "mlir::FunctionType":$type,
       CArg<"mlir::ArrayRef<mlir::NamedAttribute>", "{}">:$attrs)>];
 
@@ -36,7 +40,7 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
   let skipDefaultBuilders = 1;
 }
 
-def ReturnOp : Q_Op<"return", [Pure, Terminator, HasParent<"KernelOp">]> {
+def ReturnOp : Q_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
   let summary = "return from quantum kernel";
   let description = [{}];
   let arguments = (ins MeasurementResultType:$input);

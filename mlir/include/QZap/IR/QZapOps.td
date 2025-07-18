@@ -4,6 +4,8 @@
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Interfaces/ControlFlowInterfaces.td"
+include "mlir/IR/SymbolInterfaces.td"
 
 include "meta/traits.td"
 
@@ -36,7 +38,7 @@ def KernelOp : QZap_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
   let skipDefaultBuilders = 1;
 }
 
-def ReturnOp : QZap_Op<"return", [Pure, Terminator, HasParent<"KernelOp">]> {
+def ReturnOp : QZap_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
   let summary = "return from quantum kernel";
   let description = [{}];
   let arguments = (ins MeasurementResultType:$input);

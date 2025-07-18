@@ -11,11 +11,8 @@ def QToQZap : Pass<"q-to-qzap"> {
   }];
 
   let dependentDialects = [
-    "aqomplice::q::QDialect",
     "aqomplice::qzap::QZapDialect",
-    "mlir::arith::ArithDialect",
-    "mlir::scf::SCFDialect",
-    "mlir::memref::MemRefDialect"
+    "mlir::func::FuncDialect"
   ];
 }
 
