@@ -16,6 +16,9 @@ class QToQZapTypeConverter : public mlir::TypeConverter {
 public:
   QToQZapTypeConverter(mlir::MLIRContext *ctx) {
     addConversion([](mlir::Type type) { return type; });
+    addConversion([ctx](q::QubitArrayType type) {
+      return qzap::QubitArrayType::get(ctx);
+    });
   }
 };
 
@@ -58,6 +61,37 @@ struct CallOpLowering : public mlir::OpConversionPattern<q::CallOp> {
   }
 };
 
+struct AllocOpLowering : public mlir::OpConversionPattern<q::AllocOp> {
+  using OpConversionPattern<q::AllocOp>::OpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(q::AllocOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    if (op->getResultTypes().size() > 1) {
+      return rewriter.notifyMatchFailure(op, [](mlir::Diagnostic &diag) {
+        diag << "expected 'allocOp' to have exactly one result type";
+      });
+    }
+    
+    auto qzapQubitArray =
+        typeConverter->convertType(op->getResultTypes().front());
+    rewriter.replaceOpWithNewOp<qzap::AllocOp>(op, qzapQubitArray,
+                                               adaptor.getNqubits());
+    return mlir::success();
+  }
+};
+
+struct FreeOpLowering : public mlir::OpConversionPattern<q::FreeOp> {
+  using OpConversionPattern<q::FreeOp>::OpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(q::FreeOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    rewriter.replaceOpWithNewOp<qzap::FreeOp>(op, adaptor.getQreg());
+    return mlir::success();
+  }
+};
+
 struct QTQZap : impl::QToQZapBase<QTQZap> {
   using QToQZapBase::QToQZapBase;
 
@@ -71,7 +105,8 @@ struct QTQZap : impl::QToQZapBase<QTQZap> {
 
     QToQZapTypeConverter typeConverter(context);
     mlir::RewritePatternSet patterns(context);
-    patterns.add<KernelOpLowering, ReturnOpLowering, CallOpLowering>(context);
+    patterns.add<KernelOpLowering, ReturnOpLowering, CallOpLowering,
+                 AllocOpLowering, FreeOpLowering>(typeConverter, context);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
       signalPassFailure();
