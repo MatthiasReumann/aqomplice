@@ -1,13 +1,14 @@
 module {
     q.kernel @ghz(%nqubits : i64) -> memref<?xi1> {
+        %idx = arith.constant 0 : i64
+        %lb = arith.constant 1 : i64 
+        %step = arith.constant 1 : i64
+        
         %r = q.allocreg %nqubits
 
-        %idx = arith.constant 0 : i64
         %q0 = q.retrieve %r[%idx]
         q.h %q0
 
-        %lb = arith.constant 1 : i64 
-        %step = arith.constant 1 : i64
         scf.for %i = %lb to %nqubits step %step : i64 {
             %qi = q.retrieve %r[%i]
             q.x %q0 ctrl %qi

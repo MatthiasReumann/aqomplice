@@ -12,9 +12,6 @@ class UnitaryTrait : public TraitBase<ConcreteType, UnitaryTrait> {};
 template <typename ConcreteType>
 class HermitianTrait : public TraitBase<ConcreteType, HermitianTrait> {};
 
-template <typename ConcreteType>
-class ControlledTrait : public TraitBase<ConcreteType, ControlledTrait> {};
-
 } // namespace OpTrait
 } // namespace mlir
 

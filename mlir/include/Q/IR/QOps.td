@@ -48,7 +48,6 @@ def ReturnOp : Q_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLi
   let summary = "return from quantum kernel";
   let description = [{}];
   let arguments = (ins MeasurementResultType:$input);
-
   let assemblyFormat = " attr-dict $input `:` type($input) ";
 }
 
@@ -86,7 +85,7 @@ def AllocOp : Memory_Op<"allocreg", [HasParent<"KernelOp">]> {
 }
 
 def FreeOp : Memory_Op<"freereg"> {
-  let summary = "Deallocate a quantum register.";
+  let summary = "deallocate a quantum register";
   let description = [{}];
   let arguments = (ins QubitArrayType:$qreg);
   let assemblyFormat = " attr-dict $qreg ";
@@ -123,7 +122,6 @@ class Unitary_Op<string mnemonic, list<Trait> traits = []>
   : Gate_Op<mnemonic, traits#[Unitary]> {
   let arguments = (ins QubitType:$target, Optional<QubitType>:$control);
   let results = (outs);
-
   let assemblyFormat = " attr-dict $target ( `ctrl` $control^ )?";
 }
 

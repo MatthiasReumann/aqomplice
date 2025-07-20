@@ -4,27 +4,26 @@ module {
         %lb = arith.constant 1 : i64 
         %step = arith.constant 1 : i64
 
-        %r0 = "qzap.allocreg"(%nqubits) : (i64) -> !qzap.QubitArray
+        %r_0 = qzap.allocreg %nqubits
 
-        %r1, %q00 = "qzap.retrieve"(%r0, %idx) : (!qzap.QubitArray, i64) -> (!qzap.QubitArray, !qzap.Qubit)
-        %q01 = "qzap.h"(%q00) : (!qzap.Qubit) -> (!qzap.Qubit)
+        %r_1, %q_0 = qzap.retrieve %r_0[%idx]
+        %q_1 = qzap.h %q_0 -> !qzap.Qubit
 
-        %rN = scf.for %i = %lb to %nqubits step %step 
-            iter_args(%ri0 = %r1) -> !qzap.QubitArray : i64 {
+        %r_N, %q_N = scf.for %i = %lb to %nqubits step %step 
+            iter_args(%r_in = %r_1, %control_in = %q_1) -> (!qzap.QubitArray, !qzap.Qubit) : i64 {
             
-            %ri1, %qi0 = "qzap.retrieve"(%ri0, %i) : (!qzap.QubitArray, i64) -> (!qzap.QubitArray, !qzap.Qubit)
-            %qi1 = "qzap.cx"(%q01, %qi0) : (!qzap.Qubit, !qzap.Qubit) -> (!qzap.Qubit)
-            %ri2 = "qzap.store"(%ri1, %qi1, %i) : (!qzap.QubitArray, !qzap.Qubit, i64) -> !qzap.QubitArray
+            %r_mid, %target_in = qzap.retrieve %r_in[%i]
+            %target_out, %control_out = qzap.x %q_0 ctrl %control_in -> !qzap.Qubit, !qzap.Qubit
+            %r_out = qzap.store %r_mid[%i] %target_out
 
-            scf.yield %ri2 : !qzap.QubitArray
+            scf.yield %r_out, %control_out : !qzap.QubitArray, !qzap.Qubit
         }
         
-        %r = "qzap.store"(%rN, %q01, %idx) : (!qzap.QubitArray, !qzap.Qubit, i64) -> !qzap.QubitArray
+        %r_final = qzap.store %r_N[%idx] %q_N
 
-        %m = "qzap.measure"(%r) : (!qzap.QubitArray) -> memref<?xi1>        
-        "qzap.freereg"(%r) : (!qzap.QubitArray) -> ()
-
-        "qzap.return"(%m) : (memref<?xi1>) -> ()
+        %m = qzap.measurereg %r_final -> memref<?xi1>     
+        qzap.freereg %r_final
+        qzap.return %m : memref<?xi1>
     }
 
     %nqubits = arith.constant 4 : i64

@@ -15,6 +15,10 @@ include "QZap/IR/QZapTypes.td"
 class QZap_Op<string mnemonic, list<Trait> traits = []>
     : Op<QZap_Dialect, mnemonic, traits>;
 
+//===----------------------------------------------------------------------===//
+// Kernel Operations
+//===----------------------------------------------------------------------===//
+
 def KernelOp : QZap_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
   let summary = "quantum kernel";
   let arguments = (ins SymbolNameAttr:$sym_name,
@@ -42,6 +46,7 @@ def ReturnOp : QZap_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, Retur
   let summary = "return from quantum kernel";
   let description = [{}];
   let arguments = (ins MeasurementResultType:$input);
+  let assemblyFormat = " attr-dict $input `:` type($input) ";
 }
 
 def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
@@ -59,6 +64,10 @@ def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
   }];
 }
 
+//===----------------------------------------------------------------------===//
+// Quantum Register Operations
+//===----------------------------------------------------------------------===//
+
 class Memory_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
@@ -70,12 +79,14 @@ def AllocOp : Memory_Op<"allocreg", [HasParent<"KernelOp">]> {
   }];
   let arguments = (ins I64:$nqubits);
   let results = (outs QubitArrayType:$qreg);
+  let assemblyFormat = " attr-dict $nqubits ";
 }
 
 def FreeOp : Memory_Op<"freereg"> {
-  let summary = "Deallocate a quantum register.";
+  let summary = "deallocate a quantum register";
   let description = [{}];
   let arguments = (ins QubitArrayType:$qreg);
+  let assemblyFormat = " attr-dict $qreg ";
 }
 
 def RetrieveOp : Memory_Op<"retrieve"> {
@@ -83,60 +94,61 @@ def RetrieveOp : Memory_Op<"retrieve"> {
   let description = [{}];
   let arguments = (ins QubitArrayType:$qreg_in, I64:$index);
   let results = (outs QubitArrayType:$qreq_out, QubitType:$qubit);
+  let assemblyFormat = " attr-dict $qreg_in `[` $index `]` ";
 }
 
 def StoreOp : Memory_Op<"store"> {
   let summary = "store a qubit in a quantum register at a given index";
   let description = [{}];
-  let arguments = (ins QubitArrayType:$qreg_in, QubitType:$qubit, I64:$index);
+  let arguments = (ins QubitArrayType:$qreg_in, I64:$index, QubitType:$qubit);
   let results = (outs QubitArrayType:$qreg_out);
+  let assemblyFormat = " attr-dict $qreg_in `[` $index `]` $qubit";
 }
 
-def MeasureOp : QZap_Op<"measure"> {
+//===----------------------------------------------------------------------===//
+// Measurement Operations
+//===----------------------------------------------------------------------===//
+
+def MeasureOp : QZap_Op<"measurereg"> {
   let summary = "measure in the computational basis";
   let description = [{}];
-  let arguments = (ins AnyTypeOf<[QubitType, QubitArrayType]>:$target);
+  let arguments = (ins QubitArrayType:$target);
   let results = (outs MeasurementResultType:$res);
+  let assemblyFormat = " attr-dict $target `->` type($res)";
 }
+
+//===----------------------------------------------------------------------===//
+// Gate Operations
+//===----------------------------------------------------------------------===//
 
 class Gate_Op<string mnemonic, list<Trait> traits = []>
-    : QZap_Op<mnemonic, traits#[Unitary]>;
+    : QZap_Op<mnemonic, traits>;
 
-def HOp : Gate_Op<"h", [Hermitian]> {
+class Unitary_Op<string mnemonic, list<Trait> traits = []> 
+  : Gate_Op<mnemonic, traits#[Unitary]> {
+  let arguments = (ins QubitType:$target_in, Optional<QubitType>:$control_in);
+  let results = (outs QubitType:$target_out, Optional<QubitType>:$control_out);
+  let assemblyFormat = " attr-dict $target_in ( `ctrl` $control_in^ )? `->` type($target_out) ( `,` type($control_out)^ )? ";
+}
+
+def HOp : Unitary_Op<"h", [Hermitian]> {
   let summary = "apply H operation to target qubit";
   let description = [{}];
-  let arguments = (ins QubitType:$target_in);
-  let results = (outs QubitType:$target_out);
 }
 
-def XOp : Gate_Op<"x", [Hermitian]> {
+def XOp : Unitary_Op<"x", [Hermitian]> {
   let summary = "apply X operation to target qubit";
   let description = [{}];
-  let arguments = (ins QubitType:$target_in);
-  let results = (outs QubitType:$target_out);
 }
 
-def YOp : Gate_Op<"y", [Hermitian]> {
+def YOp : Unitary_Op<"y", [Hermitian]> {
   let summary = "apply Y operation to target qubit";
   let description = [{}];
-  let arguments = (ins QubitType:$target_in);
-  let results = (outs QubitType:$target_out);
 }
 
-def ZOp : Gate_Op<"z", [Hermitian]> {
+def ZOp : Unitary_Op<"z", [Hermitian]> {
   let summary = "apply Z operation to target qubit";
   let description = [{}];
-  let arguments = (ins QubitType:$target_in);
-  let results = (outs QubitType:$target_out);
-}
-
-def CXOp : Gate_Op<"cx", [Hermitian, Controlled]> {
-  let summary = "apply controlled-X operation to target qubit";
-  let description = [{}];
-  let arguments = (ins QubitType:$target, QubitType:$control);
-  let results = (outs);
-  let arguments = (ins QubitType:$target_in, QubitType:$control);
-  let results = (outs QubitType:$target_out);
 }
 
 #endif // QZAP_OPS
