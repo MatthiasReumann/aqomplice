@@ -6,7 +6,7 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-#include "Q/Conversion/ToQZap/ToQZap.h"
+#include "Conversion/Q-To-QZap/ToQZap.h"
 #include "Q/IR/QDialect.h"
 #include "QZap/IR/QZapDialect.h"
 

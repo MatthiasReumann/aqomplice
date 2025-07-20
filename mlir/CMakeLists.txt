@@ -26,12 +26,13 @@ add_definitions(${LLVM_DEFINITIONS})
 add_subdirectory(include/Q/IR)
 add_subdirectory(lib/Q/IR)
 
-add_subdirectory(include/Q/Conversion/ToQZap)
-add_subdirectory(lib/Q/Conversion/ToQZap)
-
 # QZap Dialect 
 add_subdirectory(include/QZap/IR)
 add_subdirectory(lib/QZap/IR)
+
+# Conversions
+add_subdirectory(include/Conversion/Q-To-QZap)
+add_subdirectory(lib/Conversion/Q-To-QZap)
 
 # Executables
 add_subdirectory(tools/q-opt)
