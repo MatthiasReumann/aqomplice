@@ -7,13 +7,13 @@ module {
         %r_0 = qzap.allocreg %nqubits
 
         %r_1, %q_0 = qzap.retrieve %r_0[%idx]
-        %q_1 = qzap.h %q_0 -> !qzap.Qubit
+        %q_1 = qzap.h %q_0  : (!qzap.Qubit) -> (!qzap.Qubit)
 
         %r_N, %q_N = scf.for %i = %lb to %nqubits step %step 
             iter_args(%r_in = %r_1, %control_in = %q_1) -> (!qzap.QubitArray, !qzap.Qubit) : i64 {
             
             %r_mid, %target_in = qzap.retrieve %r_in[%i]
-            %target_out, %control_out = qzap.x %q_0 ctrl %control_in -> !qzap.Qubit, !qzap.Qubit
+            %target_out, %control_out = qzap.x %q_0 ctrl %control_in  : (!qzap.Qubit, !qzap.Qubit) -> (!qzap.Qubit, !qzap.Qubit)
             %r_out = qzap.store %r_mid[%i] %target_out
 
             scf.yield %r_out, %control_out : !qzap.QubitArray, !qzap.Qubit

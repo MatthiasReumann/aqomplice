@@ -128,7 +128,7 @@ class Unitary_Op<string mnemonic, list<Trait> traits = []>
   : Gate_Op<mnemonic, traits#[Unitary]> {
   let arguments = (ins QubitType:$target_in, Optional<QubitType>:$control_in);
   let results = (outs QubitType:$target_out, Optional<QubitType>:$control_out);
-  // let assemblyFormat = " attr-dict $target_in ( `ctrl` $control_in^ )? `->` type($target_out) ( `,` type($control_out)^ )? ";
+  let assemblyFormat = " attr-dict $target_in ( `ctrl` $control_in^ )? `:` functional-type(operands, results) ";
 }
 
 def HOp : Unitary_Op<"h", [Hermitian]> {
