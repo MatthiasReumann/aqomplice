@@ -39,9 +39,9 @@ module {
         %q1 = q.retrieve %r[%q1_idx]
         %q2 = q.retrieve %r[%q2_idx]
         
-        q.h %q0
-        q.x %q1 ctrl %q0
-        q.x %q2 ctrl %q0
+        "q.h"(%q0) : (!q.Qubit) -> ()
+        "q.x"(%q1, %q0) : (!q.Qubit, !q.Qubit) -> ()
+        "q.x"(%q2, %q0) : (!q.Qubit, !q.Qubit) -> ()
 
         q.freereg %r
 
