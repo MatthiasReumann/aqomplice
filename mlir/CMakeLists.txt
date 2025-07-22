@@ -30,6 +30,10 @@ add_subdirectory(lib/Q/IR)
 add_subdirectory(include/QZap/IR)
 add_subdirectory(lib/QZap/IR)
 
+# QPin Dialect 
+add_subdirectory(include/QPin/IR)
+add_subdirectory(lib/QPin/IR)
+
 # Conversions
 add_subdirectory(include/Conversion/Q-To-QZap)
 add_subdirectory(lib/Conversion/Q-To-QZap)

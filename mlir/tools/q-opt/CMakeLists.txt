@@ -6,6 +6,7 @@ set(LIBS
     MLIRFunctionInterfaces
     AQOMPLICE_Q_LIB
     AQOMPLICE_QZAP_LIB
+    AQOMPLICE_QPIN_LIB
     AQOMPLICE_Q_TO_QZAP_LIB
 )
 

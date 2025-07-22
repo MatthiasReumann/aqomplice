@@ -17,8 +17,7 @@ A wanna-be quantum compiler.
   <─────dynamic qubits─────>   <─────static qubits─────>
 ```
 
+## Discussion
 
 ## References
-
-## Discussion
 
