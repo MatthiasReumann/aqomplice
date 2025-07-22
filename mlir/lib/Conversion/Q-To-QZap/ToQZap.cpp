@@ -199,9 +199,10 @@ struct MeasureOpLowering : mlir::OpConversionPattern<q::MeasureOp>,
   mlir::LogicalResult
   matchAndRewrite(q::MeasureOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Value target = getState().qregs[op.getTarget()];
+    mlir::Value qregIn = getState().qregs[op.getQreg()];
     mlir::Type res = typeConverter->convertType(op.getRes().getType());
-    rewriter.replaceOpWithNewOp<qzap::MeasureOp>(op, res, target);
+    qzap::MeasureOp m = rewriter.replaceOpWithNewOp<qzap::MeasureOp>(op, res, qregIn.getType(), qregIn);
+    state->qregs[op.getQreg()] = m.getQregOut();
     return mlir::success();
   }
 };

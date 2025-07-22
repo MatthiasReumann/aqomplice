@@ -112,9 +112,9 @@ def StoreOp : Memory_Op<"store"> {
 def MeasureOp : QZap_Op<"measurereg"> {
   let summary = "measure in the computational basis";
   let description = [{}];
-  let arguments = (ins QubitArrayType:$target);
-  let results = (outs MeasurementResultType:$res);
-  let assemblyFormat = " attr-dict $target `:` functional-type(operands, results) ";
+  let arguments = (ins QubitArrayType:$qreg_in);
+  let results = (outs MeasurementResultType:$res, QubitArrayType:$qreg_out);
+  let assemblyFormat = " attr-dict $qreg_in `:` functional-type(operands, results) ";
 }
 
 //===----------------------------------------------------------------------===//

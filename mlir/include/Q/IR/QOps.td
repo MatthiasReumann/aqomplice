@@ -106,9 +106,9 @@ def RetrieveOp : Memory_Op<"retrieve"> {
 def MeasureOp : Q_Op<"measurereg"> {
   let summary = "measure in the computational basis";
   let description = [{}];
-  let arguments = (ins QubitArrayType:$target);
+  let arguments = (ins QubitArrayType:$qreg);
   let results = (outs MeasurementResultType:$res);
-  let assemblyFormat = " attr-dict $target `:` functional-type(operands, results) ";
+  let assemblyFormat = " attr-dict $qreg `:` functional-type(operands, results) ";
 }
 
 //===----------------------------------------------------------------------===//
