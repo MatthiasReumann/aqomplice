@@ -25,7 +25,7 @@ module {
 
 /// Conversion with kernels with alloc, gates, and free.
 module {
-    q.kernel @alloc() -> memref<3xi1>   { 
+    q.kernel @ghz() -> memref<3xi1>   {
         %q0_idx = arith.constant 0 : i64
         %q1_idx = arith.constant 1 : i64
         %q2_idx = arith.constant 2 : i64
@@ -46,5 +46,5 @@ module {
         q.return %m : memref<3xi1>
     }
 
-    %m = q.call @alloc() : () -> memref<3xi1>
+    %m = q.call @ghz() : () -> memref<3xi1>
 }
