@@ -14,7 +14,6 @@
 
 namespace aqomplice {
 namespace qpin {
-
 void QPinDialect::initialize() {
   addTypes<
 #define GET_TYPEDEF_LIST

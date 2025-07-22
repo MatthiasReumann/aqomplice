@@ -71,18 +71,18 @@ def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
 class Memory_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
-def AllocOp : Memory_Op<"allocreg", [HasParent<"KernelOp">]> {
+def AllocOp : Memory_Op<"alloc", [HasParent<"KernelOp">]> {
   let summary = "allocate n qubits into a quantum register";
   let description = [{
     Ensures implicitly that all other quantum 
     operations are placed inside a kernel.
   }];
-  let arguments = (ins I64:$nqubits);
+  let arguments = (ins I32:$nqubits);
   let results = (outs QubitArrayType:$qreg);
   let assemblyFormat = " attr-dict $nqubits ";
 }
 
-def FreeOp : Memory_Op<"freereg"> {
+def FreeOp : Memory_Op<"free"> {
   let summary = "deallocate a quantum register";
   let description = [{}];
   let arguments = (ins QubitArrayType:$qreg);
@@ -92,7 +92,7 @@ def FreeOp : Memory_Op<"freereg"> {
 def RetrieveOp : Memory_Op<"retrieve"> {
   let summary = "retrieve a qubit from a quantum register at a given index";
   let description = [{}];
-  let arguments = (ins QubitArrayType:$qreg_in, I64:$index);
+  let arguments = (ins QubitArrayType:$qreg_in, I32:$index);
   let results = (outs QubitArrayType:$qreq_out, QubitType:$qubit);
   let assemblyFormat = " attr-dict $qreg_in `[` $index `]` ";
 }
@@ -100,7 +100,7 @@ def RetrieveOp : Memory_Op<"retrieve"> {
 def StoreOp : Memory_Op<"store"> {
   let summary = "store a qubit in a quantum register at a given index";
   let description = [{}];
-  let arguments = (ins QubitArrayType:$qreg_in, I64:$index, QubitType:$qubit);
+  let arguments = (ins QubitArrayType:$qreg_in, I32:$index, QubitType:$qubit);
   let results = (outs QubitArrayType:$qreg_out);
   let assemblyFormat = " attr-dict $qubit `,` $qreg_in `[` $index `]`";
 }
@@ -109,12 +109,12 @@ def StoreOp : Memory_Op<"store"> {
 // Measurement Operations
 //===----------------------------------------------------------------------===//
 
-def MeasureOp : QZap_Op<"measurereg"> {
+def MeasureOp : QZap_Op<"measure"> {
   let summary = "measure in the computational basis";
   let description = [{}];
-  let arguments = (ins QubitArrayType:$qreg_in);
-  let results = (outs MeasurementResultType:$res, QubitArrayType:$qreg_out);
-  let assemblyFormat = " attr-dict $qreg_in `:` functional-type(operands, results) ";
+  let arguments = (ins QubitType:$qubit_in);
+  let results = (outs I1:$bit, QubitType:$qubit_out);
+  let assemblyFormat = " attr-dict $qubit_in `:` functional-type(operands, results) ";
 }
 
 //===----------------------------------------------------------------------===//

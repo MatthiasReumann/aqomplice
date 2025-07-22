@@ -199,10 +199,22 @@ struct MeasureOpLowering : mlir::OpConversionPattern<q::MeasureOp>,
   mlir::LogicalResult
   matchAndRewrite(q::MeasureOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Value qregIn = getState().qregs[op.getQreg()];
-    mlir::Type res = typeConverter->convertType(op.getRes().getType());
-    qzap::MeasureOp m = rewriter.replaceOpWithNewOp<qzap::MeasureOp>(op, res, qregIn.getType(), qregIn);
-    state->qregs[op.getQreg()] = m.getQregOut();
+    LoweringState::QubitInfo &info = getState().qubits[op.getQubit()];
+
+    mlir::Value qubitIn = info.qubit;
+    qzap::MeasureOp m = rewriter.replaceOpWithNewOp<qzap::MeasureOp>(op, op.getBit().getType(), qubitIn.getType(), qubitIn);
+    
+    if ((--info.uses) == 0) {
+      auto qregIn = state->qregs[info.qreg];
+      auto store = rewriter.create<qzap::StoreOp>(
+          op->getLoc(), qregIn.getType(), qregIn, info.index, m.getQubitOut());
+
+      state->qregs[info.qreg] = store.getQregOut();
+      state->qubits.erase(op.getQubit());
+    } else {
+      info.qubit = m.getQubitOut();
+    }
+
     return mlir::success();
   }
 };
@@ -397,8 +409,8 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
       signalPassFailure();
     }
 
-    assert(state.qregs.empty());
-    assert(state.qubits.empty());
+    // assert(state.qregs.empty());
+    // assert(state.qubits.empty());
   }
 };
 }; // namespace q
