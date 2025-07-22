@@ -14,14 +14,14 @@ module {
             
             %r_mid, %target_in = qzap.retrieve %r_in[%i]
             %target_out, %control_out = qzap.x %target_in ctrl %control_in  : (!qzap.Qubit, !qzap.Qubit) -> (!qzap.Qubit, !qzap.Qubit)
-            %r_out = qzap.store %r_mid[%i] %target_out
+            %r_out = qzap.store %target_out, %r_mid[%i]
 
             scf.yield %r_out, %control_out : !qzap.QubitArray, !qzap.Qubit
         }
         
-        %r_final = qzap.store %r_N[%idx] %q_N
+        %r_N2 = qzap.store %q_N, %r_N[%idx]
 
-        %m = qzap.measurereg %r_final : (!qzap.QubitArray) -> memref<?xi1>   
+        %m, %r_final = qzap.measurereg %r_N2 : (!qzap.QubitArray) -> (memref<?xi1>, !qzap.QubitArray)   
         qzap.freereg %r_final
         qzap.return %m : memref<?xi1>
     }

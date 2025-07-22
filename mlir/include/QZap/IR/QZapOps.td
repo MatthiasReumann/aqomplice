@@ -102,7 +102,7 @@ def StoreOp : Memory_Op<"store"> {
   let description = [{}];
   let arguments = (ins QubitArrayType:$qreg_in, I64:$index, QubitType:$qubit);
   let results = (outs QubitArrayType:$qreg_out);
-  let assemblyFormat = " attr-dict $qreg_in `[` $index `]` $qubit";
+  let assemblyFormat = " attr-dict $qubit `,` $qreg_in `[` $index `]`";
 }
 
 //===----------------------------------------------------------------------===//
