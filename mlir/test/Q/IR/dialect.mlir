@@ -11,10 +11,10 @@ module {
 
         scf.for %i = %lb to %nqubits step %step : i64 {
             %qi = q.retrieve %r[%i]
-            q.x %q0 ctrl %qi
+            q.x %qi ctrl %q0
         }
 
-        %m = q.measurereg %r -> memref<?xi1> 
+        %m = q.measurereg %r : (!q.QubitArray) -> memref<?xi1> 
         q.freereg %r
         q.return %m : memref<?xi1>
     }

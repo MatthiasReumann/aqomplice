@@ -4,7 +4,9 @@
 #include "QZap/IR/QZapDialect.h"
 
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include <cassert>
 #include <unordered_map>
 #include <utility>
 
@@ -24,16 +26,21 @@ namespace q {
 namespace {
 /// @brief Internal state for lowering quantum ops.
 struct LoweringState {
+  struct QubitInfo {
+    /// @brief The qubit returned from the quantum register.
+    mlir::Value qubit;
+    /// @brief The quantum register the qubit belongs to.
+    mlir::Value qreg;
+    /// @brief The index in the quantum register.
+    mlir::Value index;
+    /// @brief The amount of uses of the qubit in the kernel.
+    std::size_t uses;
+  };
+
   /// @brief Maps q::qreq to qzap::qreq.
   std::unordered_map<mlir::Value, mlir::Value> qregs;
-
-  /// @brief Maps q::qubit to qzap::qubit and its respective index in a qreg.
-  std::unordered_map<mlir::Value, std::pair<mlir::Value, mlir::Value>> qubits;
-
-  void clear() {
-    qregs.clear();
-    qubits.clear();
-  }
+  /// @brief Maps q::qubit to qzap::qubit and some additional infos.
+  std::unordered_map<mlir::Value, QubitInfo> qubits;
 };
 
 struct LoweringWithState {
@@ -60,6 +67,10 @@ struct QToQZapTypeConverter : mlir::TypeConverter {
     });
   }
 };
+
+//===----------------------------------------------------------------------===//
+// Kernel Operations
+//===----------------------------------------------------------------------===//
 
 struct KernelOpLowering : mlir::OpConversionPattern<q::KernelOp> {
   using OpConversionPattern<q::KernelOp>::OpConversionPattern;
@@ -100,6 +111,10 @@ struct CallOpLowering : mlir::OpConversionPattern<q::CallOp> {
   }
 };
 
+//===----------------------------------------------------------------------===//
+// Quantum Register Operations
+//===----------------------------------------------------------------------===//
+
 struct AllocOpLowering : mlir::OpConversionPattern<q::AllocOp>,
                          LoweringWithState {
   using OpConversionPattern<q::AllocOp>::OpConversionPattern;
@@ -115,9 +130,7 @@ struct AllocOpLowering : mlir::OpConversionPattern<q::AllocOp>,
     mlir::Type qreg = typeConverter->convertType(op.getQreg().getType());
     qzap::AllocOp alloc = rewriter.replaceOpWithNewOp<qzap::AllocOp>(
         op, qreg, adaptor.getNqubits());
-
     getState().qregs[op.getQreg()] = alloc.getQreg();
-
     return mlir::success();
   }
 };
@@ -134,22 +147,9 @@ struct FreeOpLowering : mlir::OpConversionPattern<q::FreeOp>,
   mlir::LogicalResult
   matchAndRewrite(q::FreeOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Value qreg_in = getState().qregs[op.getQreg()];
-    mlir::Type qreg_out = typeConverter->convertType(op.getQreg().getType());
-
-    // Store all qubits back to the register with `qzap::StoreOp`.
-    for (auto &it : getState().qubits) {
-      auto &[qubit, index] = it.second;
-
-      qzap::StoreOp store = rewriter.create<qzap::StoreOp>(
-          op->getLoc(), qreg_out, qreg_in, index, qubit);
-      qreg_in = store.getQregOut();
-    }
-
-    rewriter.replaceOpWithNewOp<qzap::FreeOp>(op, qreg_in);
-
-    getState().clear(); // Assumption: Manage one register at a time.
-
+    mlir::Value qregIn = getState().qregs[op.getQreg()];
+    rewriter.replaceOpWithNewOp<qzap::FreeOp>(op, qregIn);
+    getState().qregs.erase(op.getQreg());
     return mlir::success();
   }
 };
@@ -167,19 +167,48 @@ struct RetrieveOpLowering : mlir::OpConversionPattern<q::RetrieveOp>,
   matchAndRewrite(q::RetrieveOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
     mlir::Type qubit = typeConverter->convertType(op.getQubit().getType());
-    mlir::Value qreg_in = getState().qregs[op.getQreg()];
-    mlir::Type qreg_out = qreg_in.getType();
+    mlir::Value qregIn = getState().qregs[op.getQreg()];
+
+    const auto range = op.getQubit().getUses();
+    const std::size_t uses = std::distance(range.begin(), range.end());
 
     qzap::RetrieveOp retrieve = rewriter.replaceOpWithNewOp<qzap::RetrieveOp>(
-        op, qreg_out, qubit, qreg_in, adaptor.getIndex());
+        op, qregIn.getType(), qubit, qregIn, adaptor.getIndex());
 
     getState().qregs[op.getQreg()] = retrieve.getQreqOut();
-    getState().qubits[op.getQubit()] = {retrieve.getQubit(),
-                                        retrieve.getIndex()};
+    getState().qubits[op.getQubit()] = {retrieve.getQubit(), op.getQreg(),
+                                        retrieve.getIndex(), uses};
 
     return mlir::success();
   }
 };
+
+//===----------------------------------------------------------------------===//
+// Measurement Operations
+//===----------------------------------------------------------------------===//
+
+struct MeasureOpLowering : mlir::OpConversionPattern<q::MeasureOp>,
+                           LoweringWithState {
+  using OpConversionPattern<q::MeasureOp>::OpConversionPattern;
+
+  MeasureOpLowering(mlir::TypeConverter &typeConverter,
+                    mlir::MLIRContext *context, LoweringState *state)
+      : OpConversionPattern<q::MeasureOp>(typeConverter, context),
+        LoweringWithState(state) {}
+
+  mlir::LogicalResult
+  matchAndRewrite(q::MeasureOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    mlir::Value target = getState().qregs[op.getTarget()];
+    mlir::Type res = typeConverter->convertType(op.getRes().getType());
+    rewriter.replaceOpWithNewOp<qzap::MeasureOp>(op, res, target);
+    return mlir::success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// Gate Operations
+//===----------------------------------------------------------------------===//
 
 namespace {
 template <typename SourceOp, class DestOp>
@@ -189,27 +218,43 @@ struct UnitaryOpLowering : LoweringWithState {
   mlir::LogicalResult
   matchAndRewriteImpl(SourceOp op, typename SourceOp::Adaptor adaptor,
                       mlir::ConversionPatternRewriter &rewriter) const {
-    mlir::Value tgt = op.getTarget();
-    mlir::Value target_in = getState().qubits[tgt].first;
-    mlir::Type target_out = target_in.getType();
+    LoweringState::QubitInfo &target = getState().qubits[op.getTarget()];
+    mlir::Value targetIn = target.qubit;
 
-    mlir::Value ctrl = op.getControl();
-    if (!ctrl) {
-      auto h = rewriter.create<DestOp>(op->getLoc(), target_out, target_in);
-      getState().qubits[tgt].first = h.getTargetOut();
-      rewriter.eraseOp(op);
-      return mlir::success();
+    if (op.getControl()) {
+      LoweringState::QubitInfo &control = getState().qubits[op.getControl()];
+      mlir::Value controlIn = control.qubit;
+
+      auto u =
+          rewriter.create<DestOp>(op->getLoc(), targetIn.getType(),
+                                  controlIn.getType(), targetIn, controlIn);
+      target.qubit = u.getTargetOut();
+      control.qubit = u.getControlOut();
+
+      if ((--control.uses) == 0) {
+        auto qregIn = state->qregs[control.qreg];
+        auto store = rewriter.create<qzap::StoreOp>(
+            op->getLoc(), qregIn.getType(), qregIn, control.index,
+            control.qubit);
+        state->qregs[control.qreg] = store.getQregOut();
+        state->qubits.erase(op.getControl());
+      }
+    } else {
+      auto u =
+          rewriter.create<DestOp>(op->getLoc(), targetIn.getType(), targetIn);
+      target.qubit = u.getTargetOut();
     }
 
-    mlir::Value control_in = getState().qubits[ctrl].first;
-    mlir::Type control_out = control_in.getType();
+    if ((--target.uses) == 0) {
+      auto qregIn = state->qregs[target.qreg];
+      auto store = rewriter.create<qzap::StoreOp>(
+          op->getLoc(), qregIn.getType(), qregIn, target.index, target.qubit);
 
-    auto u = rewriter.create<DestOp>(op->getLoc(), target_out, control_out,
-                                     target_in, control_in);
-    getState().qubits[tgt].first = u.getTargetOut();
-    getState().qubits[ctrl].first = u.getControlOut();
+      state->qregs[target.qreg] = store.getQregOut();
+      state->qubits.erase(op.getTarget());
+    }
+
     rewriter.eraseOp(op);
-
     return mlir::success();
   }
 };
@@ -279,6 +324,52 @@ struct ZOpLowering : mlir::OpConversionPattern<q::ZOp>,
   }
 };
 
+//===----------------------------------------------------------------------===//
+// SCF With Quantum Operations
+//===----------------------------------------------------------------------===//
+
+struct ForOpLowering : mlir::OpConversionPattern<mlir::scf::ForOp>,
+                       LoweringWithState {
+  using OpConversionPattern<mlir::scf::ForOp>::OpConversionPattern;
+
+  ForOpLowering(mlir::TypeConverter &typeConverter, mlir::MLIRContext *context,
+                LoweringState *state)
+      : OpConversionPattern<mlir::scf::ForOp>(typeConverter, context),
+        LoweringWithState(state) {}
+
+  mlir::LogicalResult
+  matchAndRewrite(mlir::scf::ForOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    auto deps = getLoopDependencies(op);
+    for (const auto &o : deps) {
+      llvm::outs() << o << '\n';
+    }
+
+    auto loop = rewriter.create<mlir::scf::ForOp>(
+        op->getLoc(), op.getLowerBound(), op.getUpperBound(), op.getStep(),
+        deps);
+    rewriter.inlineBlockBefore(op.getBody(), loop.getBody(), loop.end());
+
+    rewriter.eraseOp(op);
+    return mlir::success();
+  }
+
+private:
+  llvm::SmallVector<mlir::Value, 4>
+  getLoopDependencies(mlir::scf::ForOp forOp) const {
+    llvm::SmallVector<mlir::Value, 4> values;
+    forOp.getRegion().walk([&](mlir::Operation *op) {
+      for (mlir::Value operand : op->getOperands()) {
+        if (!forOp.getRegion().isAncestor(operand.getParentRegion())) {
+          values.push_back(operand);
+        }
+      }
+    });
+    return values;
+  }
+};
+
+/// @brief Q to QZap Dialect Conversion Pass
 struct QToQZap : impl::QToQZapBase<QToQZap> {
   using QToQZapBase::QToQZapBase;
 
@@ -297,13 +388,16 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
     patterns
         .add<KernelOpLowering, ReturnOpLowering, CallOpLowering>(typeConverter,
                                                                  context)
-        .add<AllocOpLowering, FreeOpLowering, RetrieveOpLowering, HOpLowering,
-             XOpLowering, YOpLowering, ZOpLowering>(typeConverter, context,
-                                                    &state);
+        .add<AllocOpLowering, FreeOpLowering, RetrieveOpLowering,
+             MeasureOpLowering, HOpLowering, XOpLowering, YOpLowering,
+             ZOpLowering>(typeConverter, context, &state);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
       signalPassFailure();
     }
+
+    assert(state.qregs.empty());
+    assert(state.qubits.empty());
   }
 };
 }; // namespace q

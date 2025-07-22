@@ -108,7 +108,7 @@ def MeasureOp : Q_Op<"measurereg"> {
   let description = [{}];
   let arguments = (ins QubitArrayType:$target);
   let results = (outs MeasurementResultType:$res);
-  let assemblyFormat = " attr-dict $target `->` type($res)";
+  let assemblyFormat = " attr-dict $target `:` functional-type(operands, results) ";
 }
 
 //===----------------------------------------------------------------------===//

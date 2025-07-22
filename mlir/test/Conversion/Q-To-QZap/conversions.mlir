@@ -25,9 +25,7 @@ module {
 
 /// Conversion with kernels with alloc, gates, and free.
 module {
-    q.kernel @alloc() -> (i1) {
-        %dummy = arith.constant 1 : i1
-        
+    q.kernel @alloc() -> memref<3xi1>   { 
         %q0_idx = arith.constant 0 : i64
         %q1_idx = arith.constant 1 : i64
         %q2_idx = arith.constant 2 : i64
@@ -43,10 +41,10 @@ module {
         q.x %q1 ctrl %q0
         q.x %q2 ctrl %q0
 
+        %m = q.measurereg %r : (!q.QubitArray) -> memref<3xi1> 
         q.freereg %r
-
-        q.return %dummy : i1
+        q.return %m : memref<3xi1>
     }
 
-    %m = q.call @alloc() : () -> (i1)
+    %m = q.call @alloc() : () -> memref<3xi1>
 }

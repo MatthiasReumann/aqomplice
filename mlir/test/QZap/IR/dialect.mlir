@@ -13,7 +13,7 @@ module {
             iter_args(%r_in = %r_1, %control_in = %q_1) -> (!qzap.QubitArray, !qzap.Qubit) : i64 {
             
             %r_mid, %target_in = qzap.retrieve %r_in[%i]
-            %target_out, %control_out = qzap.x %q_0 ctrl %control_in  : (!qzap.Qubit, !qzap.Qubit) -> (!qzap.Qubit, !qzap.Qubit)
+            %target_out, %control_out = qzap.x %target_in ctrl %control_in  : (!qzap.Qubit, !qzap.Qubit) -> (!qzap.Qubit, !qzap.Qubit)
             %r_out = qzap.store %r_mid[%i] %target_out
 
             scf.yield %r_out, %control_out : !qzap.QubitArray, !qzap.Qubit
@@ -21,7 +21,7 @@ module {
         
         %r_final = qzap.store %r_N[%idx] %q_N
 
-        %m = qzap.measurereg %r_final -> memref<?xi1>     
+        %m = qzap.measurereg %r_final : (!qzap.QubitArray) -> memref<?xi1>   
         qzap.freereg %r_final
         qzap.return %m : memref<?xi1>
     }
