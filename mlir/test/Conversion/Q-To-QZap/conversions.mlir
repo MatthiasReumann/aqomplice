@@ -26,10 +26,11 @@ module {
 /// Conversion with kernels with alloc, gates, and free.
 module {
     q.kernel @ghz() -> memref<3xi1>   {
+        %nqubits = arith.constant 3 : i32
+        
         %c0_i32 = arith.constant 0 : i32
         %c1_i32 = arith.constant 1 : i32
         %c2_i32 = arith.constant 2 : i32
-        %nqubits = arith.constant 3 : i32
         
         %r = q.alloc %nqubits
 

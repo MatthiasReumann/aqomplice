@@ -4,7 +4,6 @@
 #include "QZap/IR/QZapDialect.h"
 
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include <cassert>
 #include <unordered_map>
@@ -337,51 +336,6 @@ struct ZOpLowering : mlir::OpConversionPattern<q::ZOp>,
   }
 };
 
-//===----------------------------------------------------------------------===//
-// SCF With Quantum Operations
-//===----------------------------------------------------------------------===//
-
-struct ForOpLowering : mlir::OpConversionPattern<mlir::scf::ForOp>,
-                       LoweringWithState {
-  using OpConversionPattern<mlir::scf::ForOp>::OpConversionPattern;
-
-  ForOpLowering(mlir::TypeConverter &typeConverter, mlir::MLIRContext *context,
-                LoweringState *state)
-      : OpConversionPattern<mlir::scf::ForOp>(typeConverter, context),
-        LoweringWithState(state) {}
-
-  mlir::LogicalResult
-  matchAndRewrite(mlir::scf::ForOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    auto deps = getLoopDependencies(op);
-    for (const auto &o : deps) {
-      llvm::outs() << o << '\n';
-    }
-
-    auto loop = rewriter.create<mlir::scf::ForOp>(
-        op->getLoc(), op.getLowerBound(), op.getUpperBound(), op.getStep(),
-        deps);
-    rewriter.inlineBlockBefore(op.getBody(), loop.getBody(), loop.end());
-
-    rewriter.eraseOp(op);
-    return mlir::success();
-  }
-
-private:
-  llvm::SmallVector<mlir::Value, 4>
-  getLoopDependencies(mlir::scf::ForOp forOp) const {
-    llvm::SmallVector<mlir::Value, 4> values;
-    forOp.getRegion().walk([&](mlir::Operation *op) {
-      for (mlir::Value operand : op->getOperands()) {
-        if (!forOp.getRegion().isAncestor(operand.getParentRegion())) {
-          values.push_back(operand);
-        }
-      }
-    });
-    return values;
-  }
-};
-
 /// @brief Q to QZap Dialect Conversion Pass
 struct QToQZap : impl::QToQZapBase<QToQZap> {
   using QToQZapBase::QToQZapBase;
@@ -409,8 +363,8 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
       signalPassFailure();
     }
 
-    // assert(state.qregs.empty());
-    // assert(state.qubits.empty());
+    assert(state.qregs.empty());
+    assert(state.qubits.empty());
   }
 };
 }; // namespace q
