@@ -1,6 +1,6 @@
 module {
     qpin.kernel @ghz() -> memref<3xi1> {
-        // Assign static(device) qubit values
+        // Assign static(device) qubit values.
         %q0 = qpin.qubit 0
         %q1 = qpin.qubit 1 
         %q2 = qpin.qubit 2
@@ -8,7 +8,7 @@ module {
         %c0_i32 = arith.constant 0 : i32
         %c1_i32 = arith.constant 1 : i32
         
-        // Apply GHZ gates
+        // Apply GHZ gate sequence.
         qpin.h %q0
         qpin.x %q1 ctrl %q0
         qpin.x %q2 ctrl %q0

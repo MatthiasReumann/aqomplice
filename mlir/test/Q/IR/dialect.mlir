@@ -1,39 +1,41 @@
 module {
-    q.kernel @ghz(%nqubits : i32) -> memref<?xi1> {
+    q.kernel @ghz() -> memref<3xi1>   {
+        %nqubits = arith.constant 3 : i32
+        
+        %c0_i32 = arith.constant 0 : i32
+        %c1_i32 = arith.constant 1 : i32
+        %c2_i32 = arith.constant 2 : i32
+        
         // Allocate quantum register with `nqubits` qubits.
         %r = q.alloc %nqubits
 
-        // Apply Hadamard gate to first qubit.
-        %c0_i32 = arith.constant 0 : i32
         %q0 = q.retrieve %r[%c0_i32]
+        %q1 = q.retrieve %r[%c1_i32]
+        %q2 = q.retrieve %r[%c2_i32]
+        
+        // Apply GHZ gate sequence.
         q.h %q0
-
-        // Apply x gate controlled by first qubit to the other qubits.
-        %lb = arith.constant 1 : i32
-        %step = arith.constant 1 : i32
-        scf.for %i = %lb to %nqubits step %step : i32 {
-            %qi = q.retrieve %r[%i]
-            q.x %qi ctrl %q0
-        }
+        q.x %q1 ctrl %q0
+        q.x %q2 ctrl %q0
 
         // Measure each qubit into a classical register.
-        // Due to the type requirement we need to cast to index before. 
-        %nqubitsi = index.casts %nqubits : i32 to index
-        %m = memref.alloc(%nqubitsi) : memref<?xi1>
-        scf.for %i = %c0_i32 to %nqubits step %step : i32 {
-            %ii = index.casts %i : i32 to index
-            
-            %qi = q.retrieve %r[%i]
-            %bit = q.measure %qi
-            
-            memref.store %bit, %m[%ii] : memref<?xi1>
-        }
+        %b0 = q.measure %q0
+        %b1 = q.measure %q1
+        %b2 = q.measure %q2
 
-        // Release the quantum register.
+        %m = memref.alloc() : memref<3xi1>
+        
+        %i0 = arith.constant 0 : index
+        %i1 = arith.constant 1 : index
+        %i2 = arith.constant 2 : index
+
+        memref.store %b0, %m[%i0] : memref<3xi1>
+        memref.store %b1, %m[%i1] : memref<3xi1>
+        memref.store %b2, %m[%i2] : memref<3xi1>
+
         q.free %r
-        q.return %m : memref<?xi1>
+        q.return %m : memref<3xi1>
     }
 
-    %nqubits = arith.constant 4 : i32
-    %m = q.call @kernel(%nqubits) : (i32) -> (memref<?xi1>)
+    %m = q.call @ghz() : () -> memref<3xi1>
 }
