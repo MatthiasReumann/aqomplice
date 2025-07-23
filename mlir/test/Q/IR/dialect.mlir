@@ -20,7 +20,7 @@ module {
         // Due to the type requirement we need to cast to index before. 
         %nqubitsi = index.casts %nqubits : i32 to index
         %m = memref.alloc(%nqubitsi) : memref<?xi1>
-        scf.for %i = %lb to %nqubits step %step : i32 {
+        scf.for %i = %c0_i32 to %nqubits step %step : i32 {
             %ii = index.casts %i : i32 to index
             
             %qi = q.retrieve %r[%i]

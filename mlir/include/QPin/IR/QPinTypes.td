@@ -9,10 +9,8 @@ class QPin_Type<string name, string typeMnemonic, list<Trait> traits = []>
     let mnemonic = typeMnemonic;
 }
 
-def BitArrayType : MemRefOf<[I1]> {
-    let summary = "a bit-array";
+def QubitType : QPin_Type<"Qubit", "Qubit"> {
+    let summary = "a qubit";
 }
-
-def MeasurementResultType : AnyTypeOf<[I1, BitArrayType]> {}
 
 #endif // QPIN_TYPES

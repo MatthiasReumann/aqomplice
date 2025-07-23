@@ -31,7 +31,7 @@ module {
         // Again: The use of loop-carried values is due to value semantics.
         %nqubitsi = index.casts %nqubits : i32 to index
         %m = memref.alloc(%nqubitsi) : memref<?xi1>
-        %r4 = scf.for %i = %lb to %nqubits step %step
+        %r4 = scf.for %i = %c0_i32 to %nqubits step %step
             iter_args(%rl0 = %r3) -> (!qzap.QubitArray): i32 {
             %ii = index.casts %i : i32 to index
             

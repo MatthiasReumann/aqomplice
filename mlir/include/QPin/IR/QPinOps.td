@@ -45,7 +45,7 @@ def KernelOp : QPin_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 def ReturnOp : QPin_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
   let summary = "return from quantum kernel";
   let description = [{}];
-  let arguments = (ins MeasurementResultType:$input);
+  let arguments = (ins Variadic<AnyType>:$input);
   let assemblyFormat = " attr-dict $input `:` type($input) ";
 }
 
@@ -58,22 +58,56 @@ def CallOp : QPin_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
     OptionalAttr<DictArrayAttr>:$arg_attrs,
     OptionalAttr<DictArrayAttr>:$res_attrs
   );
-  let results = (outs MeasurementResultType);
+  let results = (outs Variadic<AnyType>);
   let assemblyFormat = [{ 
     $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
   }];
 }
 
 //===----------------------------------------------------------------------===//
-// Quantum Register Operations
-//===----------------------------------------------------------------------===//
-
-//===----------------------------------------------------------------------===//
 // Measurement Operations
 //===----------------------------------------------------------------------===//
+
+def MeasureOp : QPin_Op<"measure"> {
+  let summary = "measure in the computational basis";
+  let description = [{}];
+  let arguments = (ins I32:$qubit);
+  let results = (outs I1:$bit);
+  let assemblyFormat = " attr-dict $qubit";
+}
 
 //===----------------------------------------------------------------------===//
 // Gate Operations
 //===----------------------------------------------------------------------===//
+
+class Gate_Op<string mnemonic, list<Trait> traits = []>
+    : QPin_Op<mnemonic, traits>;
+
+class Unitary_Op<string mnemonic, list<Trait> traits = []> 
+  : Gate_Op<mnemonic, traits#[Unitary]> {
+  let arguments = (ins I32:$target, Optional<I32>:$control);
+  let results = (outs);
+  let assemblyFormat = " attr-dict $target ( `ctrl` $control^ )?";
+}
+
+def HOp : Unitary_Op<"h", [Hermitian]> {
+  let summary = "apply H operation to target qubit";
+  let description = [{}];
+}
+
+def XOp : Unitary_Op<"x", [Hermitian]> {
+  let summary = "apply X operation to target qubit";
+  let description = [{}];
+}
+
+def YOp : Unitary_Op<"y", [Hermitian]> {
+  let summary = "apply Y operation to target qubit";
+  let description = [{}];
+}
+
+def ZOp : Unitary_Op<"z", [Hermitian]> {
+  let summary = "apply Z operation to target qubit";
+  let description = [{}];
+}
 
 #endif // QPIN_OPS

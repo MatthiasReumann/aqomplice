@@ -79,5 +79,5 @@ Operation::operand_range CallOp::getArgOperands() { return getOperands(); }
 MutableOperandRange CallOp::getArgOperandsMutable() {
   return getOperandsMutable();
 }
-}; // namespace q
+}; // namespace qpin
 }; // namespace aqomplice
