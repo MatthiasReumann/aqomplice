@@ -53,7 +53,6 @@ struct LoweringWithState {
 
   LoweringState *state;
 };
-
 } // namespace
 
 struct QToQZapTypeConverter : mlir::TypeConverter {
@@ -335,6 +334,10 @@ struct ZOpLowering : mlir::OpConversionPattern<q::ZOp>,
     return matchAndRewriteImpl(op, adaptor, rewriter);
   }
 };
+
+//===----------------------------------------------------------------------===//
+// Conversion Entry
+//===----------------------------------------------------------------------===//
 
 /// @brief Q to QZap Dialect Conversion Pass
 struct QToQZap : impl::QToQZapBase<QToQZap> {

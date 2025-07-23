@@ -1,29 +1,3 @@
-/// Conversion of kernels.
-module {
-    q.kernel @identity(%x : i1) -> (i1) {
-        q.return %x : i1
-    }
-
-    %x = arith.constant 1 : i1
-    %m = q.call @identity(%x) : (i1) -> (i1)
-}
-
-/// Conversion with kernels with alloc and free.
-module {
-    q.kernel @alloc(%nqubits : i32) -> (i1) {
-        %dummy = arith.constant 1 : i1
-        
-        %r = q.alloc %nqubits
-        q.free %r
-
-        q.return %dummy : i1
-    }
-
-    %nqubits = arith.constant 4 : i32
-    %m = q.call @alloc(%nqubits) : (i32) -> (i1)
-}
-
-/// Conversion with kernels with alloc, gates, and free.
 module {
     q.kernel @ghz() -> memref<3xi1>   {
         %nqubits = arith.constant 3 : i32

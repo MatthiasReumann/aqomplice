@@ -1,0 +1,1 @@
+add_mlir_dialect_library(AQOMPLICE_QZAP_TO_QPIN_LIB ToQPin.cpp DEPENDS MLIRQZapToQPinIncGen)
