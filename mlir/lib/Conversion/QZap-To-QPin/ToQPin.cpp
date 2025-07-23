@@ -134,7 +134,16 @@ struct RetrieveOpLowering : mlir::OpConversionPattern<qzap::RetrieveOp>,
   mlir::LogicalResult
   matchAndRewrite(qzap::RetrieveOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-    getState().qubits[op.getQubit()] = op.getIndex();
+    auto index = op.getIndex();
+    assert(index.getType().isInteger()); // index must be arith.constant : i32
+    auto attr = llvm::dyn_cast<mlir::IntegerAttr>(
+        index.getDefiningOp()->getAttr("value"));
+    assert(attr != nullptr); // cast must succeed. 
+    
+    auto q = rewriter.create<qpin::QubitOp>(
+        index.getLoc(), qpin::StaticQubitType::get(getContext()), attr);
+
+    getState().qubits[op.getQubit()] = q.getQubit();
     rewriter.eraseOp(op);
     return mlir::success();
   }
