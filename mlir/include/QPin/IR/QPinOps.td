@@ -65,13 +65,25 @@ def CallOp : QPin_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
 }
 
 //===----------------------------------------------------------------------===//
+// Quantum Register Operations
+//===----------------------------------------------------------------------===//
+
+def QubitOp : QPin_Op<"qubit"> {
+  let summary = "static qubit address";
+  let description = [{}];
+  let arguments = (ins I32Attr:$index);
+  let results = (outs StaticQubitType:$qubit);
+  let assemblyFormat = "attr-dict $index";
+}
+
+//===----------------------------------------------------------------------===//
 // Measurement Operations
 //===----------------------------------------------------------------------===//
 
 def MeasureOp : QPin_Op<"measure"> {
   let summary = "measure in the computational basis";
   let description = [{}];
-  let arguments = (ins I32:$qubit);
+  let arguments = (ins StaticQubitType:$qubit);
   let results = (outs I1:$bit);
   let assemblyFormat = " attr-dict $qubit";
 }
@@ -85,7 +97,7 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
   : Gate_Op<mnemonic, traits#[Unitary]> {
-  let arguments = (ins I32:$target, Optional<I32>:$control);
+  let arguments = (ins StaticQubitType:$target, Optional<StaticQubitType>:$control);
   let results = (outs);
   let assemblyFormat = " attr-dict $target ( `ctrl` $control^ )?";
 }

@@ -1,29 +1,35 @@
 module {
-    qpin.kernel @ghz(%nqubits : i32) -> memref<?xi1> {        
-        %N = index.casts %nqubits : i32 to index
+    qpin.kernel @ghz() -> memref<3xi1> {
+        // Assign static(device) qubit values
+        %q0 = qpin.qubit 0
+        %q1 = qpin.qubit 1 
+        %q2 = qpin.qubit 2
         
         %c0_i32 = arith.constant 0 : i32
         %c1_i32 = arith.constant 1 : i32
         
-        // Apply Hadamard gate to the qubit with static "address" 0
-        qpin.h %c0_i32
-        
-        scf.for %i = %c1_i32 to %nqubits step %c1_i32 : i32 {
-            qpin.x %i ctrl %c0_i32
-        }
+        // Apply GHZ gates
+        qpin.h %q0
+        qpin.x %q1 ctrl %q0
+        qpin.x %q2 ctrl %q0
 
         // Measure each qubit into a classical register.
-        // Due to the type requirement we need to cast to index before. 
-        %m = memref.alloc(%N) : memref<?xi1>
-        scf.for %i = %c0_i32 to %nqubits step %c1_i32 : i32 {
-            %ii = index.casts %i : i32 to index
-            %val = qpin.measure %i
-            memref.store %val, %m[%ii] : memref<?xi1>
-        }
+        %b0 = qpin.measure %q0 
+        %b1 = qpin.measure %q1 
+        %b2 = qpin.measure %q2
 
-        qpin.return %m : memref<?xi1>
+        %m = memref.alloc() : memref<3xi1>
+      
+        %i0 = arith.constant 0 : index
+        %i1 = arith.constant 1 : index
+        %i2 = arith.constant 2 : index
+      
+        memref.store %b0, %m[%i0] : memref<3xi1>
+        memref.store %b1, %m[%i1] : memref<3xi1>
+        memref.store %b2, %m[%i2] : memref<3xi1>
+      
+        qpin.return %m : memref<3xi1>
     }
 
-    %nqubits = arith.constant 4 : i32
-    %m = qpin.call @ghz() : () -> (memref<?xi1>)
+    %m = qpin.call @ghz() : () -> (memref<3xi1>)
 }

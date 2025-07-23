@@ -9,8 +9,8 @@ class QPin_Type<string name, string typeMnemonic, list<Trait> traits = []>
     let mnemonic = typeMnemonic;
 }
 
-def QubitType : QPin_Type<"Qubit", "Qubit"> {
-    let summary = "a qubit";
+def StaticQubitType : QPin_Type<"StaticQubit", "StaticQubit"> {
+    let summary = "a static (device) qubit";
 }
 
 #endif // QPIN_TYPES
