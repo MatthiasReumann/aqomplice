@@ -7,14 +7,6 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include <cassert>
 
-namespace std {
-template <> struct hash<mlir::Value> {
-  size_t operator()(mlir::Value const &val) const noexcept {
-    return hash_value(val);
-  }
-};
-} // namespace std
-
 namespace aqomplice {
 namespace qzap {
 #define GEN_PASS_DEF_QZAPTOQPIN
