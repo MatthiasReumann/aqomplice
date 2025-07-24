@@ -18,7 +18,7 @@ module {
         q.x %q1 ctrl %q0
         q.x %q2 ctrl %q0
 
-        // Measure each qubit into a classical register.
+        // Measure each qubit.
         %b0 = q.measure %q0
         %b1 = q.measure %q1
         %b2 = q.measure %q2
@@ -54,7 +54,7 @@ module {
         q.h %q2
         q.swap %q0, %q2
 
-        // Measure each qubit into a classical register.
+        // Measure each qubit.
         %b0 = q.measure %q0
         %b1 = q.measure %q1
         %b2 = q.measure %q2
