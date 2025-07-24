@@ -7,7 +7,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
 
-include "meta/traits.td"
+include "Common/traits.td"
 
 include "Q/IR/QDialect.td"
 include "Q/IR/QTypes.td"
