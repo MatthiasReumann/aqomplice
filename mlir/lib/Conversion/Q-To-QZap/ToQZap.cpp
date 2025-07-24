@@ -197,7 +197,8 @@ struct MeasureOpLowering : StatefulOpConversionPattern<q::MeasureOp> {
 
 namespace {
 template <typename SourceOp, typename DestOp>
-class UnitaryOpLowering : public StatefulOpConversionPattern<SourceOp> {
+class OptionallyControlledUnitaryOpLowering
+    : public StatefulOpConversionPattern<SourceOp> {
 public:
   using StatefulOpConversionPattern<SourceOp>::StatefulOpConversionPattern;
 
@@ -255,20 +256,69 @@ private:
 };
 } // namespace
 
-struct HOpLowering : UnitaryOpLowering<q::HOp, qzap::HOp> {
-  using UnitaryOpLowering<q::HOp, qzap::HOp>::UnitaryOpLowering;
+struct HOpLowering : OptionallyControlledUnitaryOpLowering<q::HOp, qzap::HOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      q::HOp, qzap::HOp>::OptionallyControlledUnitaryOpLowering;
 };
 
-struct XOpLowering : UnitaryOpLowering<q::XOp, qzap::XOp> {
-  using UnitaryOpLowering<q::XOp, qzap::XOp>::UnitaryOpLowering;
+struct XOpLowering : OptionallyControlledUnitaryOpLowering<q::XOp, qzap::XOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      q::XOp, qzap::XOp>::OptionallyControlledUnitaryOpLowering;
 };
 
-struct YOpLowering : UnitaryOpLowering<q::YOp, qzap::YOp> {
-  using UnitaryOpLowering<q::YOp, qzap::YOp>::UnitaryOpLowering;
+struct YOpLowering : OptionallyControlledUnitaryOpLowering<q::YOp, qzap::YOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      q::YOp, qzap::YOp>::OptionallyControlledUnitaryOpLowering;
 };
 
-struct ZOpLowering : UnitaryOpLowering<q::ZOp, qzap::ZOp> {
-  using UnitaryOpLowering<q::ZOp, qzap::ZOp>::UnitaryOpLowering;
+struct ZOpLowering : OptionallyControlledUnitaryOpLowering<q::ZOp, qzap::ZOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      q::ZOp, qzap::ZOp>::OptionallyControlledUnitaryOpLowering;
+};
+
+struct SOpLowering : OptionallyControlledUnitaryOpLowering<q::SOp, qzap::SOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      q::SOp, qzap::SOp>::OptionallyControlledUnitaryOpLowering;
+};
+
+struct TOpLowering : OptionallyControlledUnitaryOpLowering<q::TOp, qzap::TOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      q::TOp, qzap::TOp>::OptionallyControlledUnitaryOpLowering;
+};
+
+struct SwapOpLowering : StatefulOpConversionPattern<q::SwapOp> {
+  using StatefulOpConversionPattern<q::SwapOp>::StatefulOpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(q::SwapOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    LoweringContext::QubitInfo &a = getState().qubits[op.getA()];
+    LoweringContext::QubitInfo &b = getState().qubits[op.getB()];
+
+    auto swap = rewriter.create<qzap::SwapOp>(
+        op->getLoc(), a.qubit.getType(), b.qubit.getType(), a.qubit, b.qubit);
+    a.qubit = swap.getAOut();
+    b.qubit = swap.getBOut();
+
+    if ((--a.uses) == 0) {
+      auto qregIn = getState().qregs[a.qreg];
+      auto store = rewriter.create<qzap::StoreOp>(
+          op->getLoc(), qregIn.getType(), qregIn, a.index, a.qubit);
+      getState().qregs[a.qreg] = store.getQregOut();
+      getState().qubits.erase(op.getA());
+    }
+
+    if ((--b.uses) == 0) {
+      auto qregIn = getState().qregs[b.qreg];
+      auto store = rewriter.create<qzap::StoreOp>(
+          op->getLoc(), qregIn.getType(), qregIn, b.index, b.qubit);
+      getState().qregs[b.qreg] = store.getQregOut();
+      getState().qubits.erase(op.getB());
+    }
+
+    rewriter.eraseOp(op);
+    return mlir::success();
+  }
 };
 
 //===----------------------------------------------------------------------===//
@@ -296,7 +346,8 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
                                                                  context)
         .add<AllocOpLowering, FreeOpLowering, RetrieveOpLowering,
              MeasureOpLowering, HOpLowering, XOpLowering, YOpLowering,
-             ZOpLowering>(typeConverter, context, state);
+             ZOpLowering, SOpLowering, TOpLowering, SwapOpLowering>(
+            typeConverter, context, state);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
       signalPassFailure();
