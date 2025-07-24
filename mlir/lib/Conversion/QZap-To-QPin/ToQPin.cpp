@@ -17,6 +17,8 @@ namespace {
 struct LoweringContext {
   /// @brief Maps qzap::qubit to index i32 value.
   llvm::DenseMap<mlir::Value, mlir::Value> qubits{};
+  /// @brief Clean-up verification
+  bool isCleanedUp() const { return qubits.empty(); }
 };
 
 template <typename OpType>
@@ -182,7 +184,8 @@ struct MeasureOpLowering : StatefulOpConversionPattern<qzap::MeasureOp> {
 
 namespace {
 template <typename SourceOp, class DestOp>
-class UnitaryOpLowering : public StatefulOpConversionPattern<SourceOp> {
+class OptionallyControlledUnitaryOpLowering
+    : public StatefulOpConversionPattern<SourceOp> {
 public:
   using StatefulOpConversionPattern<SourceOp>::StatefulOpConversionPattern;
 
@@ -218,20 +221,62 @@ private:
 };
 } // namespace
 
-struct HOpLowering : UnitaryOpLowering<qzap::HOp, qpin::HOp> {
-  using UnitaryOpLowering<qzap::HOp, qpin::HOp>::UnitaryOpLowering;
+struct HOpLowering
+    : OptionallyControlledUnitaryOpLowering<qzap::HOp, qpin::HOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      qzap::HOp, qpin::HOp>::OptionallyControlledUnitaryOpLowering;
 };
 
-struct XOpLowering : UnitaryOpLowering<qzap::XOp, qpin::XOp> {
-  using UnitaryOpLowering<qzap::XOp, qpin::XOp>::UnitaryOpLowering;
+struct XOpLowering
+    : OptionallyControlledUnitaryOpLowering<qzap::XOp, qpin::XOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      qzap::XOp, qpin::XOp>::OptionallyControlledUnitaryOpLowering;
 };
 
-struct YOpLowering : UnitaryOpLowering<qzap::YOp, qpin::YOp> {
-  using UnitaryOpLowering<qzap::YOp, qpin::YOp>::UnitaryOpLowering;
+struct YOpLowering
+    : OptionallyControlledUnitaryOpLowering<qzap::YOp, qpin::YOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      qzap::YOp, qpin::YOp>::OptionallyControlledUnitaryOpLowering;
 };
 
-struct ZOpLowering : UnitaryOpLowering<qzap::ZOp, qpin::ZOp> {
-  using UnitaryOpLowering<qzap::ZOp, qpin::ZOp>::UnitaryOpLowering;
+struct ZOpLowering
+    : OptionallyControlledUnitaryOpLowering<qzap::ZOp, qpin::ZOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      qzap::ZOp, qpin::ZOp>::OptionallyControlledUnitaryOpLowering;
+};
+
+struct SOpLowering
+    : OptionallyControlledUnitaryOpLowering<qzap::SOp, qpin::SOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      qzap::SOp, qpin::SOp>::OptionallyControlledUnitaryOpLowering;
+};
+
+struct TOpLowering
+    : OptionallyControlledUnitaryOpLowering<qzap::TOp, qpin::TOp> {
+  using OptionallyControlledUnitaryOpLowering<
+      qzap::TOp, qpin::TOp>::OptionallyControlledUnitaryOpLowering;
+};
+
+struct SwapOpLowering : StatefulOpConversionPattern<qzap::SwapOp> {
+  using StatefulOpConversionPattern<qzap::SwapOp>::StatefulOpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(qzap::SwapOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    mlir::Value aIndex = getState().qubits[op.getAIn()];
+    mlir::Value bIndex = getState().qubits[op.getBIn()];
+
+    rewriter.create<qpin::SwapOp>(op->getLoc(), aIndex, bIndex);
+
+    getState().qubits.erase(op.getAIn());
+    getState().qubits[op.getAOut()] = aIndex;
+
+    getState().qubits.erase(op.getBIn());
+    getState().qubits[op.getBOut()] = bIndex;
+
+    rewriter.eraseOp(op);
+    return mlir::success();
+  }
 };
 
 //===----------------------------------------------------------------------===//
@@ -258,13 +303,14 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
         .add<KernelOpLowering, ReturnOpLowering, CallOpLowering,
              AllocOpLowering, FreeOpLowering>(typeConverter, context)
         .add<RetrieveOpLowering, MeasureOpLowering, StoreOpLowering,
-             HOpLowering, XOpLowering>(typeConverter, context, state);
+             HOpLowering, XOpLowering, SOpLowering, TOpLowering,
+             SwapOpLowering>(typeConverter, context, state);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
       signalPassFailure();
     }
 
-    assert(state.qubits.empty());
+    assert(state.isCleanedUp());
   }
 };
 }; // namespace qzap

@@ -119,7 +119,7 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : Q_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]> {}
+  : Gate_Op<mnemonic, traits#[Unitary]>;
 
 class OptionallyControlledUnitary_Op<string mnemonic, list<Trait> traits = []> 
   : Unitary_Op<mnemonic, traits> {
