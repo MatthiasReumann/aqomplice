@@ -40,6 +40,7 @@ def KernelOp : QPin_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 
   let hasCustomAssemblyFormat = 1;
   let skipDefaultBuilders = 1;
+  let hasRegionVerifier = 1;
 }
 
 def ReturnOp : QPin_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
