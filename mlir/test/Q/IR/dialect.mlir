@@ -23,19 +23,9 @@ module {
         %b1 = q.measure %q1
         %b2 = q.measure %q2
 
-        %m = memref.alloc() : memref<3xi1>
-        
-        %i0 = arith.constant 0 : index
-        %i1 = arith.constant 1 : index
-        %i2 = arith.constant 2 : index
-
-        memref.store %b0, %m[%i0] : memref<3xi1>
-        memref.store %b1, %m[%i1] : memref<3xi1>
-        memref.store %b2, %m[%i2] : memref<3xi1>
-
         q.free %r
-        q.return %m : memref<3xi1>
+        q.return %b0, %b1, %b2 : i1, i1, i1
     }
 
-    %m = q.call @ghz() : () -> memref<3xi1>
+    %m:3 = q.call @ghz() : () -> (i1, i1, i1)
 }
