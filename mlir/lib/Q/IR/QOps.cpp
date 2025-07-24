@@ -41,6 +41,20 @@ bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
 }
 
 /**
+ * @brief Verify that the operand qubits of an unitary operation aren't used
+ * after measurement.
+ */
+template <>
+bool usedAfterMeasurement<q::SwapOp>(const llvm::DenseSet<Value> &measured,
+                                     const Operation &op) {
+  if (auto u = mlir::dyn_cast<q::SwapOp>(op)) {
+    return measured.find(u.getA()) != measured.end() &&
+           measured.find(u.getB()) != measured.end();
+  }
+  return false;
+}
+
+/**
  * @brief Verify that the kernel fulfills QIR's base profile.
  */
 llvm::LogicalResult KernelOp::verifyRegions() {
@@ -83,7 +97,10 @@ llvm::LogicalResult KernelOp::verifyRegions() {
     if (usedAfterMeasurement<q::HOp>(measured, op) ||
         usedAfterMeasurement<q::XOp>(measured, op) ||
         usedAfterMeasurement<q::YOp>(measured, op) ||
-        usedAfterMeasurement<q::ZOp>(measured, op)) {
+        usedAfterMeasurement<q::ZOp>(measured, op) ||
+        usedAfterMeasurement<q::SOp>(measured, op) ||
+        usedAfterMeasurement<q::TOp>(measured, op) ||
+        usedAfterMeasurement<q::SwapOp>(measured, op)) {
       return emitOpError() << "Once a qubit is measured, nothing further "
                               "will be done with it other than releasing it.";
     }
