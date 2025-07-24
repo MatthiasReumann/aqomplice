@@ -17,10 +17,4 @@ def QubitArrayType : QZap_Type<"QubitArray", "QubitArray"> {
     let summary = "a qubit-array";
 }
 
-def BitArrayType : MemRefOf<[I1]> {
-    let summary = "a bit-array";
-}
-
-def MeasurementResultType : AnyTypeOf<[I1, BitArrayType]> {}
-
 #endif // QZAP_TYPES

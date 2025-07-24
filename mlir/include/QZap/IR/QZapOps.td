@@ -45,7 +45,7 @@ def KernelOp : QZap_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 def ReturnOp : QZap_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
   let summary = "return from quantum kernel";
   let description = [{}];
-  let arguments = (ins MeasurementResultType:$input);
+  let arguments = (ins Variadic<I1>:$input);
   let assemblyFormat = " attr-dict $input `:` type($input) ";
 }
 
@@ -58,7 +58,7 @@ def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
     OptionalAttr<DictArrayAttr>:$arg_attrs,
     OptionalAttr<DictArrayAttr>:$res_attrs
   );
-  let results = (outs MeasurementResultType);
+  let results = (outs Variadic<I1>);
   let assemblyFormat = [{ 
     $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
   }];

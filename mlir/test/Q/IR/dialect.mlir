@@ -1,5 +1,5 @@
 module {
-    q.kernel @ghz() -> memref<3xi1>   {
+    q.kernel @ghz() -> (i1, i1, i1) {
         %nqubits = arith.constant 3 : i32
         
         %c0_i32 = arith.constant 0 : i32
