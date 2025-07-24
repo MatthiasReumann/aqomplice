@@ -78,17 +78,18 @@ llvm::LogicalResult KernelOp::verifyRegions() {
 
     if (auto measureOp = mlir::dyn_cast<qpin::MeasureOp>(op)) {
       measured.insert(measureOp.getQubit());
-    }
 
-    if (usedAfterMeasurement<qpin::HOp>(measured, op) ||
-        usedAfterMeasurement<qpin::XOp>(measured, op) ||
-        usedAfterMeasurement<qpin::YOp>(measured, op) ||
-        usedAfterMeasurement<qpin::ZOp>(measured, op) ||
-        usedAfterMeasurement<qpin::SOp>(measured, op) ||
-        usedAfterMeasurement<qpin::TOp>(measured, op) ||
-        usedAfterMeasurement<qpin::SwapOp>(measured, op)) {
-      return emitOpError() << "Once a qubit is measured, nothing further "
-                              "will be done with it other than releasing it.";
+    } else { // Gate operations
+      if (usedAfterMeasurement<qpin::HOp>(measured, op) ||
+          usedAfterMeasurement<qpin::XOp>(measured, op) ||
+          usedAfterMeasurement<qpin::YOp>(measured, op) ||
+          usedAfterMeasurement<qpin::ZOp>(measured, op) ||
+          usedAfterMeasurement<qpin::SOp>(measured, op) ||
+          usedAfterMeasurement<qpin::TOp>(measured, op) ||
+          usedAfterMeasurement<qpin::SwapOp>(measured, op)) {
+        return emitOpError() << "Once a qubit is measured, nothing further "
+                                "will be done with it other than releasing it.";
+      }
     }
   }
 

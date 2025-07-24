@@ -84,25 +84,24 @@ llvm::LogicalResult KernelOp::verifyRegions() {
                << "A kernel must have exactly zero or one alloc calls.";
       }
       hasAlloc = true;
-    }
 
-    if (auto freeOp = mlir::dyn_cast<q::FreeOp>(op)) {
+    } else if (auto freeOp = mlir::dyn_cast<q::FreeOp>(op)) {
       hasFree = true;
-    }
 
-    if (auto measureOp = mlir::dyn_cast<q::MeasureOp>(op)) {
+    } else if (auto measureOp = mlir::dyn_cast<q::MeasureOp>(op)) {
       measured.insert(measureOp.getQubit());
-    }
 
-    if (usedAfterMeasurement<q::HOp>(measured, op) ||
-        usedAfterMeasurement<q::XOp>(measured, op) ||
-        usedAfterMeasurement<q::YOp>(measured, op) ||
-        usedAfterMeasurement<q::ZOp>(measured, op) ||
-        usedAfterMeasurement<q::SOp>(measured, op) ||
-        usedAfterMeasurement<q::TOp>(measured, op) ||
-        usedAfterMeasurement<q::SwapOp>(measured, op)) {
-      return emitOpError() << "Once a qubit is measured, nothing further "
-                              "will be done with it other than releasing it.";
+    } else { // Gate operations
+      if (usedAfterMeasurement<q::HOp>(measured, op) ||
+          usedAfterMeasurement<q::XOp>(measured, op) ||
+          usedAfterMeasurement<q::YOp>(measured, op) ||
+          usedAfterMeasurement<q::ZOp>(measured, op) ||
+          usedAfterMeasurement<q::SOp>(measured, op) ||
+          usedAfterMeasurement<q::TOp>(measured, op) ||
+          usedAfterMeasurement<q::SwapOp>(measured, op)) {
+        return emitOpError() << "Once a qubit is measured, nothing further "
+                                "will be done with it other than releasing it.";
+      }
     }
   }
 
