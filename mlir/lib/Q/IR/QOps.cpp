@@ -1,6 +1,8 @@
 #include "Q/IR/QDialect.h"
 
+#include "mlir/Dialect/Arith/IR/Arith.h"            // IWYU pragma: keep
 #include "mlir/Dialect/Func/IR/FuncOps.h"           // IWYU pragma: keep
+#include "mlir/Dialect/SCF/IR/SCF.h"                // IWYU pragma: keep
 #include "mlir/IR/Attributes.h"                     // IWYU pragma: keep
 #include "mlir/IR/Builders.h"                       // IWYU pragma: keep
 #include "mlir/IR/BuiltinTypes.h"                   // IWYU pragma: keep
@@ -20,6 +22,80 @@ namespace aqomplice {
 namespace q {
 using namespace mlir;
 
+/**
+ * @brief Verify that the operand qubits of an unitary operation aren't used
+ * after measurement.
+ */
+template <typename UnitaryOp>
+bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
+                          const Operation &op) {
+  if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
+    bool used = measured.find(u.getTarget()) != measured.end();
+    if (auto ctrl = u.getControl()) {
+      used |= measured.find(ctrl) != measured.end();
+    }
+    return used;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Verify that the kernel fulfills QIR's base profile.
+ */
+llvm::LogicalResult KernelOp::verifyRegions() {
+  bool hasFree = false;
+  bool hasAlloc = false;
+  llvm::DenseSet<Value> measured{};
+  for (auto &op : getBody().getOps()) {
+    if (isa<scf::SCFDialect>(op.getDialect())) {
+      return emitOpError() << "No classical control flow elements are allowed "
+                              "in a kernel (as of now).";
+    }
+
+    if (isa<arith::ArithDialect>(op.getDialect())) {
+      if (!isa<arith::ConstantOp>(op)) {
+        return emitOpError() << "No arithmetic or other calculations may be "
+                                "performed with classical values.";
+      }
+    }
+
+    if (!isa<q::QDialect>(op.getDialect())) {
+      continue;
+    }
+
+    if (auto allocOp = mlir::dyn_cast<q::AllocOp>(op)) {
+      if (hasAlloc) {
+        return emitOpError()
+               << "A kernel must have exactly zero or one alloc calls.";
+      }
+      hasAlloc = true;
+    }
+
+    if (auto freeOp = mlir::dyn_cast<q::FreeOp>(op)) {
+      hasFree = true;
+    }
+
+    if (auto measureOp = mlir::dyn_cast<q::MeasureOp>(op)) {
+      measured.insert(measureOp.getQubit());
+    }
+
+    if (usedAfterMeasurement<q::HOp>(measured, op) ||
+        usedAfterMeasurement<q::XOp>(measured, op) ||
+        usedAfterMeasurement<q::YOp>(measured, op) ||
+        usedAfterMeasurement<q::ZOp>(measured, op)) {
+      return emitOpError() << "Once a qubit is measured, nothing further "
+                              "will be done with it other than releasing it.";
+    }
+  }
+
+  if (hasAlloc && !hasFree) {
+    return emitOpError() << "Missing q.free.";
+  }
+
+  return mlir::success();
+}
+
 void KernelOp::build(OpBuilder &builder, OperationState &state,
                      llvm::StringRef name, FunctionType type,
                      llvm::ArrayRef<NamedAttribute> attrs) {
@@ -37,17 +113,17 @@ ParseResult KernelOp::parse(OpAsmParser &parser, OperationState &result) {
          std::string &) { return builder.getFunctionType(argTypes, results); };
 
   return function_interface_impl::parseFunctionOp(
-      parser, result, false,
-      getFunctionTypeAttrName(result.name), buildFuncType,
-      getArgAttrsAttrName(result.name), getResAttrsAttrName(result.name));
+      parser, result, false, getFunctionTypeAttrName(result.name),
+      buildFuncType, getArgAttrsAttrName(result.name),
+      getResAttrsAttrName(result.name));
 }
 
 void KernelOp::print(OpAsmPrinter &p) {
   // Dispatch to the FunctionOpInterface provided utility method that prints the
   // function operation.
   function_interface_impl::printFunctionOp(
-      p, *this, false, getFunctionTypeAttrName(),
-      getArgAttrsAttrName(), getResAttrsAttrName());
+      p, *this, false, getFunctionTypeAttrName(), getArgAttrsAttrName(),
+      getResAttrsAttrName());
 }
 
 /**

@@ -41,6 +41,7 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 
   let hasCustomAssemblyFormat = 1;
   let skipDefaultBuilders = 1;
+  let hasRegionVerifier = 1;
 }
 
 def ReturnOp : Q_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
