@@ -22,21 +22,26 @@ namespace qzap {
 
 namespace {
 /// @brief Internal state for lowering quantum ops.
-struct LoweringState {
+struct LoweringContext {
   /// @brief Maps qzap::qubit to index i32 value.
-  std::unordered_map<mlir::Value, mlir::Value> qubits;
+  llvm::DenseMap<mlir::Value, mlir::Value> qubits{};
 };
 
-struct LoweringWithState {
-  LoweringWithState(LoweringState *state) : state(state) {}
+template <typename OpType>
+class StatefulOpConversionPattern : public mlir::OpConversionPattern<OpType> {
+  using mlir::OpConversionPattern<OpType>::OpConversionPattern;
 
-  /// @brief Return reference to internal state.
-  LoweringState &getState() const {
-    assert(state != nullptr);
-    return *state;
-  }
+public:
+  StatefulOpConversionPattern(mlir::TypeConverter &typeConverter,
+                              mlir::MLIRContext *context,
+                              LoweringContext &state)
+      : mlir::OpConversionPattern<OpType>(typeConverter, context),
+        state_(state) {}
 
-  LoweringState *state;
+  LoweringContext &getState() const { return state_; }
+
+private:
+  LoweringContext &state_;
 };
 } // namespace
 
@@ -122,14 +127,9 @@ struct FreeOpLowering : mlir::OpConversionPattern<qzap::FreeOp> {
   }
 };
 
-struct RetrieveOpLowering : mlir::OpConversionPattern<qzap::RetrieveOp>,
-                            LoweringWithState {
-  using OpConversionPattern<qzap::RetrieveOp>::OpConversionPattern;
-
-  RetrieveOpLowering(mlir::TypeConverter &typeConverter,
-                     mlir::MLIRContext *context, LoweringState *state)
-      : OpConversionPattern<qzap::RetrieveOp>(typeConverter, context),
-        LoweringWithState(state) {}
+struct RetrieveOpLowering : StatefulOpConversionPattern<qzap::RetrieveOp> {
+  using StatefulOpConversionPattern<
+      qzap::RetrieveOp>::StatefulOpConversionPattern;
 
   mlir::LogicalResult
   matchAndRewrite(qzap::RetrieveOp op, OpAdaptor adaptor,
@@ -138,8 +138,8 @@ struct RetrieveOpLowering : mlir::OpConversionPattern<qzap::RetrieveOp>,
     assert(index.getType().isInteger()); // index must be arith.constant : i32
     auto attr = llvm::dyn_cast<mlir::IntegerAttr>(
         index.getDefiningOp()->getAttr("value"));
-    assert(attr != nullptr); // cast must succeed. 
-    
+    assert(attr != nullptr); // cast must succeed.
+
     auto q = rewriter.create<qpin::QubitOp>(
         index.getLoc(), qpin::StaticQubitType::get(getContext()), attr);
 
@@ -149,14 +149,8 @@ struct RetrieveOpLowering : mlir::OpConversionPattern<qzap::RetrieveOp>,
   }
 };
 
-struct StoreOpLowering : mlir::OpConversionPattern<qzap::StoreOp>,
-                         LoweringWithState {
-  using OpConversionPattern<qzap::StoreOp>::OpConversionPattern;
-
-  StoreOpLowering(mlir::TypeConverter &typeConverter,
-                  mlir::MLIRContext *context, LoweringState *state)
-      : OpConversionPattern<qzap::StoreOp>(typeConverter, context),
-        LoweringWithState(state) {}
+struct StoreOpLowering : StatefulOpConversionPattern<qzap::StoreOp> {
+  using StatefulOpConversionPattern<qzap::StoreOp>::StatefulOpConversionPattern;
 
   mlir::LogicalResult
   matchAndRewrite(qzap::StoreOp op, OpAdaptor adaptor,
@@ -171,14 +165,9 @@ struct StoreOpLowering : mlir::OpConversionPattern<qzap::StoreOp>,
 // Measurement Operations
 //===----------------------------------------------------------------------===//
 
-struct MeasureOpLowering : mlir::OpConversionPattern<qzap::MeasureOp>,
-                           LoweringWithState {
-  using OpConversionPattern<qzap::MeasureOp>::OpConversionPattern;
-
-  MeasureOpLowering(mlir::TypeConverter &typeConverter,
-                    mlir::MLIRContext *context, LoweringState *state)
-      : OpConversionPattern<qzap::MeasureOp>(typeConverter, context),
-        LoweringWithState(state) {}
+struct MeasureOpLowering : StatefulOpConversionPattern<qzap::MeasureOp> {
+  using StatefulOpConversionPattern<
+      qzap::MeasureOp>::StatefulOpConversionPattern;
 
   mlir::LogicalResult
   matchAndRewrite(qzap::MeasureOp op, OpAdaptor adaptor,
@@ -201,27 +190,35 @@ struct MeasureOpLowering : mlir::OpConversionPattern<qzap::MeasureOp>,
 
 namespace {
 template <typename SourceOp, class DestOp>
-struct UnitaryOpLowering : LoweringWithState {
-  UnitaryOpLowering(LoweringState *state) : LoweringWithState(state) {}
+class UnitaryOpLowering : public StatefulOpConversionPattern<SourceOp> {
+public:
+  using StatefulOpConversionPattern<SourceOp>::StatefulOpConversionPattern;
 
+  mlir::LogicalResult
+  matchAndRewrite(SourceOp op, typename SourceOp::Adaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    return matchAndRewriteImpl(op, adaptor, rewriter);
+  }
+
+private:
   mlir::LogicalResult
   matchAndRewriteImpl(SourceOp op, typename SourceOp::Adaptor adaptor,
                       mlir::ConversionPatternRewriter &rewriter) const {
-    mlir::Value targetIndex = getState().qubits[op.getTargetIn()];
+    mlir::Value targetIndex = this->getState().qubits[op.getTargetIn()];
 
     if (op.getControlIn()) {
-      mlir::Value controlIndex = getState().qubits[op.getControlIn()];
+      mlir::Value controlIndex = this->getState().qubits[op.getControlIn()];
 
       rewriter.create<DestOp>(op->getLoc(), targetIndex, controlIndex);
 
-      getState().qubits.erase(op.getControlIn());
-      getState().qubits[op.getControlOut()] = controlIndex;
+      this->getState().qubits.erase(op.getControlIn());
+      this->getState().qubits[op.getControlOut()] = controlIndex;
     } else {
       rewriter.create<DestOp>(op->getLoc(), targetIndex, nullptr);
     }
 
-    getState().qubits.erase(op.getTargetIn());
-    getState().qubits[op.getTargetOut()] = targetIndex;
+    this->getState().qubits.erase(op.getTargetIn());
+    this->getState().qubits[op.getTargetOut()] = targetIndex;
 
     rewriter.eraseOp(op);
     return mlir::success();
@@ -229,68 +226,20 @@ struct UnitaryOpLowering : LoweringWithState {
 };
 } // namespace
 
-struct HOpLowering : mlir::OpConversionPattern<qzap::HOp>,
-                     UnitaryOpLowering<qzap::HOp, qpin::HOp> {
-  using OpConversionPattern<qzap::HOp>::OpConversionPattern;
-
-  HOpLowering(mlir::TypeConverter &typeConverter, mlir::MLIRContext *context,
-              LoweringState *state)
-      : OpConversionPattern<qzap::HOp>(typeConverter, context),
-        UnitaryOpLowering(state) {}
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::HOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter);
-  }
+struct HOpLowering : UnitaryOpLowering<qzap::HOp, qpin::HOp> {
+  using UnitaryOpLowering<qzap::HOp, qpin::HOp>::UnitaryOpLowering;
 };
 
-struct XOpLowering : mlir::OpConversionPattern<qzap::XOp>,
-                     UnitaryOpLowering<qzap::XOp, qpin::XOp> {
-  using OpConversionPattern<qzap::XOp>::OpConversionPattern;
-
-  XOpLowering(mlir::TypeConverter &typeConverter, mlir::MLIRContext *context,
-              LoweringState *state)
-      : OpConversionPattern<qzap::XOp>(typeConverter, context),
-        UnitaryOpLowering(state) {}
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::XOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter);
-  }
+struct XOpLowering : UnitaryOpLowering<qzap::XOp, qpin::XOp> {
+  using UnitaryOpLowering<qzap::XOp, qpin::XOp>::UnitaryOpLowering;
 };
 
-struct YOpLowering : mlir::OpConversionPattern<qzap::YOp>,
-                     UnitaryOpLowering<qzap::YOp, qpin::YOp> {
-  using OpConversionPattern<qzap::YOp>::OpConversionPattern;
-
-  YOpLowering(mlir::TypeConverter &typeConverter, mlir::MLIRContext *context,
-              LoweringState *state)
-      : OpConversionPattern<qzap::YOp>(typeConverter, context),
-        UnitaryOpLowering(state) {}
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::YOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter);
-  }
+struct YOpLowering : UnitaryOpLowering<qzap::YOp, qpin::YOp> {
+  using UnitaryOpLowering<qzap::YOp, qpin::YOp>::UnitaryOpLowering;
 };
 
-struct ZOpLowering : mlir::OpConversionPattern<qzap::ZOp>,
-                     UnitaryOpLowering<qzap::ZOp, qpin::ZOp> {
-  using OpConversionPattern<qzap::ZOp>::OpConversionPattern;
-
-  ZOpLowering(mlir::TypeConverter &typeConverter, mlir::MLIRContext *context,
-              LoweringState *state)
-      : OpConversionPattern<qzap::ZOp>(typeConverter, context),
-        UnitaryOpLowering(state) {}
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::ZOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter);
-  }
+struct ZOpLowering : UnitaryOpLowering<qzap::ZOp, qpin::ZOp> {
+  using UnitaryOpLowering<qzap::ZOp, qpin::ZOp>::UnitaryOpLowering;
 };
 
 //===----------------------------------------------------------------------===//
@@ -305,7 +254,7 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
     mlir::MLIRContext *context = &getContext();
     mlir::Operation *op = getOperation();
 
-    LoweringState state{};
+    LoweringContext state{};
 
     mlir::ConversionTarget target(*context);
     target.addIllegalDialect<QZapDialect>();
@@ -317,7 +266,7 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
         .add<KernelOpLowering, ReturnOpLowering, CallOpLowering,
              AllocOpLowering, FreeOpLowering>(typeConverter, context)
         .add<RetrieveOpLowering, MeasureOpLowering, StoreOpLowering,
-             HOpLowering, XOpLowering>(typeConverter, context, &state);
+             HOpLowering, XOpLowering>(typeConverter, context, state);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
       signalPassFailure();
