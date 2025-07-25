@@ -1,6 +1,6 @@
 # aqomplice
 
-A wanna-be quantum compiler.
+A wanna-be quantum-classical compiler.
 
 ## Workflow 
 
@@ -12,7 +12,7 @@ A wanna-be quantum compiler.
   Memory        Value          Topology       LLVM IR
   Semantics     Semantics      Conforming     
   ─────────     ─────────      ─────────      ─────────
-  Interface     Optimizations  Routing        Executable
+  Interface     Optimizations  Routing        Exit
   
   <─────dynamic qubits─────>   <─────static qubits─────>
 ```

@@ -289,7 +289,6 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
 
   void runOnOperation() override {
     mlir::MLIRContext *context = &getContext();
-    mlir::Operation *op = getOperation();
 
     LoweringContext state{};
 
@@ -306,7 +305,8 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
              HOpLowering, XOpLowering, SOpLowering, TOpLowering,
              SwapOpLowering>(typeConverter, context, state);
 
-    if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
+    if (failed(applyPartialConversion(getOperation(), target,
+                                      std::move(patterns)))) {
       signalPassFailure();
     }
 

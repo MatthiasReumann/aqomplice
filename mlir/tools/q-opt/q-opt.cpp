@@ -10,6 +10,7 @@
 
 #include "Conversion/Q-To-QZap/ToQZap.h"
 #include "Conversion/QZap-To-QPin/ToQPin.h"
+#include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
@@ -18,6 +19,7 @@ int main(int argc, char **argv) {
   mlir::registerAllPasses();
   aqomplice::q::registerPasses();
   aqomplice::qzap::registerPasses();
+  aqomplice::qpin::registerPasses();
 
   mlir::DialectRegistry registry;
   registry.insert<aqomplice::q::QDialect, aqomplice::qzap::QZapDialect,
