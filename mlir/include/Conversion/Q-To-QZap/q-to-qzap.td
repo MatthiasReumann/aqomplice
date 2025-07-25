@@ -5,11 +5,7 @@ include "mlir/Pass/PassBase.td"
 
 def QToQZap : Pass<"q-to-qzap"> {
   let summary = "Lower `q` to `qzap`";
-
-  let description = [{
-    This pass lowers the `q` dialect to `qzap`.
-  }];
-
+  let description = [{}];
   let dependentDialects = [
     "aqomplice::qzap::QZapDialect"
   ];

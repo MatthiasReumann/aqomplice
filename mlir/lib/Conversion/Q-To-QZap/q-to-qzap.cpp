@@ -1,4 +1,4 @@
-#include "Conversion/Q-To-QZap/ToQZap.h"
+#include "Conversion/q-to-qzap/q-to-qzap.h"
 
 #include "Q/IR/QDialect.h"
 #include "QZap/IR/QZapDialect.h"
@@ -11,7 +11,7 @@
 namespace aqomplice {
 namespace q {
 #define GEN_PASS_DEF_QTOQZAP
-#include "Conversion/Q-To-QZap/QToQZap.h.inc" // adds `impl::QToQZapBase`
+#include "Conversion/q-to-qzap/q-to-qzap.h.inc" // adds `impl::QToQZapBase`
 
 namespace {
 /// @brief Internal state for lowering quantum ops.

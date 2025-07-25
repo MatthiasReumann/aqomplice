@@ -8,8 +8,8 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-#include "Conversion/Q-To-QZap/ToQZap.h"
-#include "Conversion/QZap-To-QPin/ToQPin.h"
+#include "Conversion/q-to-qzap/q-to-qzap.h"
+#include "Conversion/qzap-to-qpin/qzap-to-qpin.h"
 #include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"

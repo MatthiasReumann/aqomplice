@@ -6,10 +6,8 @@
 namespace aqomplice {
 namespace qzap {
 #define GEN_PASS_DECL
-#include "Conversion/QZap-To-QPin/QZapToQPin.h.inc"
-
 #define GEN_PASS_REGISTRATION
-#include "Conversion/QZap-To-QPin/QZapToQPin.h.inc"
+#include "Conversion/qzap-to-qpin/qzap-to-qpin.h.inc"
 }; // namespace qzap
 }; // namespace aqomplice
 
