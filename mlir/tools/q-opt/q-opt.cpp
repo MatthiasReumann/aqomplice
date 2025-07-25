@@ -1,6 +1,6 @@
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Index/IR/IndexDialect.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/MLIRContext.h"
@@ -9,14 +9,15 @@
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
 #include "Conversion/q-to-qzap/q-to-qzap.h"
-#include "Conversion/qzap-to-qpin/qzap-to-qpin.h"
 #include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
+#include "Conversion/qzap-to-qpin/qzap-to-qpin.h"
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
+
   aqomplice::q::registerPasses();
   aqomplice::qzap::registerPasses();
   aqomplice::qpin::registerPasses();
@@ -25,7 +26,7 @@ int main(int argc, char **argv) {
   registry.insert<aqomplice::q::QDialect, aqomplice::qzap::QZapDialect,
                   aqomplice::qpin::QPinDialect, mlir::arith::ArithDialect,
                   mlir::memref::MemRefDialect, mlir::func::FuncDialect,
-                  mlir::scf::SCFDialect, mlir::index::IndexDialect>();
+                  mlir::scf::SCFDialect, mlir::LLVM::LLVMDialect>();
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));

@@ -1,5 +1,5 @@
 module {
-  qpin.kernel @qft() -> (i1, i1, i1) {    
+  func.func @qft() -> (i1, i1, i1) {    
     // Assign static (device) qubit values.
 
     %q0 = qpin.qubit 0
@@ -20,8 +20,8 @@ module {
     %b1 = qpin.measure %q1
     %b2 = qpin.measure %q2
     
-    qpin.return %b0, %b1, %b2 : i1, i1, i1
+    func.return %b0, %b1, %b2 : i1, i1, i1
   }
 
-  %m:3 = qpin.call @qft() : () -> (i1, i1, i1)
+  %m:3 = func.call @qft() : () -> (i1, i1, i1)
 }
