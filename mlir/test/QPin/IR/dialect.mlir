@@ -18,7 +18,12 @@ module {
         qpin.return %b0, %b1, %b2 : i1, i1, i1
     }
 
-    %m:3 = qpin.call @ghz() : () -> (i1, i1, i1)
+    func.func @main() -> (i32) {
+        %m:3 = qpin.call @ghz() : () -> (i1, i1, i1)
+
+        %c0_i32 = arith.constant 0 : i32
+        return %c0_i32 : i32
+    }
 }
 
 module {
@@ -46,5 +51,10 @@ module {
     qpin.return %b0, %b1, %b2 : i1, i1, i1
   }
 
-  %m:3 = qpin.call @qft() : () -> (i1, i1, i1)
+  func.func @main() -> (i32) {
+    %m:3 = qpin.call @qft() : () -> (i1, i1, i1)
+    
+    %c0_i32 = arith.constant 0 : i32
+    return %c0_i32 : i32
+  }
 }

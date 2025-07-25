@@ -244,7 +244,7 @@ struct QPinTypeConverter : mlir::TypeConverter {
 };
 } // namespace
 
-/// @brief QPin to LLVM Dialect Conversion Pass
+/// @brief QPin to LLVM Dialect Conversion Pass. Acts on KernelOp.
 struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
   using QPinToLLVMBase::QPinToLLVMBase;
 
@@ -252,8 +252,13 @@ struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
     mlir::MLIRContext *context = &getContext();
 
     mlir::ConversionTarget target(*context);
-    target.addIllegalDialect<QPinDialect>();
     target.addLegalDialect<mlir::LLVM::LLVMDialect>();
+    target.addIllegalDialect<QPinDialect>();
+    // Kernel operations have a separate conversion pass.
+    target.addLegalOp<qpin::KernelOp>();
+    target.addLegalOp<qpin::ReturnOp>();
+    target.addLegalOp<qpin::CallOp>();
+    
 
     QPinTypeConverter typeConverter(context);
     mlir::RewritePatternSet patterns(context);

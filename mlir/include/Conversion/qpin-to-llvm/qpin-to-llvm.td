@@ -3,7 +3,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def QPinToLLVM : Pass<"qpin-to-llvm"> {
+def QPinToLLVM : Pass<"qpin-to-llvm", "KernelOp"> {
   let summary = "lower `qpin` to `llvm` dialect";
   let description = [{}];
   let dependentDialects = [
