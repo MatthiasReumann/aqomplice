@@ -5,6 +5,6 @@ mlir_tablegen(QZapOpsDialect.h.inc -gen-dialect-decls)
 mlir_tablegen(QZapOpsDialect.cpp.inc -gen-dialect-defs)
 mlir_tablegen(QZapOpsTypes.h.inc -gen-typedef-decls)
 mlir_tablegen(QZapOpsTypes.cpp.inc -gen-typedef-defs)
-add_public_tablegen_target(MLIR_QZAP_OPS_INCGEN)
+add_public_tablegen_target(AqompliceQZapIncGen)
 
 add_mlir_doc(QZapOps QZapOps Dialects/ -gen-op-doc)

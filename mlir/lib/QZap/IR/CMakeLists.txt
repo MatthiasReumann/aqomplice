@@ -1,1 +1,1 @@
-add_mlir_dialect_library(AqompliceQZapDialect QZapDialect.cpp QZapOps.cpp DEPENDS MLIR_QZAP_OPS_INCGEN)
+add_mlir_dialect_library(AqompliceQZapDialect QZapDialect.cpp QZapOps.cpp DEPENDS AqompliceQZapIncGen)
