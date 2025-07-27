@@ -48,7 +48,7 @@ def ReturnOp : Q_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLi
   let summary = "return from quantum kernel";
   let description = [{}];
   let arguments = (ins Variadic<I1>:$input);
-  let assemblyFormat = " attr-dict $input `:` type($input) ";
+  let assemblyFormat = "attr-dict ($input^ `:` type($input))?";
 }
 
 def CallOp : Q_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {

@@ -111,7 +111,6 @@ module {
 module {
   qpin.kernel @qft() -> (i1, i1, i1) {
     // Assign static (device) qubit values.
-
     %1 = qpin.qubit 0
     %2 = qpin.qubit 1
     %3 = qpin.qubit 2
