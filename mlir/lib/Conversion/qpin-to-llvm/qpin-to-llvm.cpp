@@ -1,15 +1,14 @@
 #include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
 
+#include "Common/qir.h"
 #include "QPin/IR/QPinDialect.h"
 
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
-#include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/Transforms/DialectConversion.h"
-#include "llvm/Support/FormatVariadic.h"
 #include <cassert>
 
 namespace aqomplice {
@@ -18,36 +17,46 @@ namespace aqomplice {
 
 namespace qpin {
 namespace {
-std::string getQIRCallableName(const std::string &op,
-                               const std::string &specialization) {
-  return llvm::formatv("__quantum__qis__{0}__{1}", op, specialization);
-}
-} // namespace
 
 //===----------------------------------------------------------------------===//
 // Kernel Operations
 //===----------------------------------------------------------------------===//
 
-struct KernelOpLowering : mlir::ConvertOpToLLVMPattern<qpin::KernelOp> {
-  KernelOpLowering(const mlir::LLVMTypeConverter &converter)
-      : ConvertOpToLLVMPattern(converter) {}
+struct KernelOpLowering : mlir::OpConversionPattern<qpin::KernelOp> {
+  using OpConversionPattern<qpin::KernelOp>::OpConversionPattern;
 
   mlir::LogicalResult
   matchAndRewrite(qpin::KernelOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const override {
-    auto func = llvm::dyn_cast<mlir::FunctionOpInterface>(op.getOperation());
-    if (!func) {
-      return rewriter.notifyMatchFailure(
-          op, "Could not cast kernel to FunctionOpInterface");
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
+    if (!moduleOp) {
+      return mlir::failure();
     }
 
-    mlir::FailureOr<mlir::LLVM::LLVMFuncOp> llvmFunc =
-        mlir::convertFuncOpToLLVMFuncOp(func, rewriter, *getTypeConverter());
-    if (failed(llvmFunc))
-      return rewriter.notifyMatchFailure(
-          op, "Could not convert kernel to LLVM func");
+    mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
+    mlir::Type result = mlir::LLVM::LLVMVoidType::get(op.getContext());
 
-    rewriter.eraseOp(op);
+    const std::string funcName = getQIRFuncString("rt__initialize");
+    const auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
+    const auto funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
+
+    if (!funcOp) {
+      mlir::OpBuilder::InsertionGuard guard(rewriter);
+      rewriter.setInsertionPointToStart(moduleOp.getBody());
+      rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName, funcType);
+    }
+
+    {
+      mlir::Block &funcBlock = op.getBody().getBlocks().front();
+      mlir::OpBuilder::InsertionGuard guard(rewriter);
+      rewriter.setInsertionPoint(&funcBlock.front());
+
+      mlir::LLVM::ZeroOp nullPtr =
+          rewriter.create<mlir::LLVM::ZeroOp>(op->getLoc(), param);
+      rewriter.create<mlir::LLVM::CallOp>(op->getLoc(), funcType, funcName,
+                                          nullPtr.getRes());
+    }
+
     return mlir::success();
   }
 };
@@ -81,18 +90,17 @@ struct MeasureOpLowering : mlir::OpConversionPattern<qpin::MeasureOp> {
   mlir::LogicalResult
   matchAndRewrite(qpin::MeasureOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-
-    mlir::Type result = op.getBit().getType();
-    mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
-
     auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
     if (!moduleOp) {
       return mlir::failure();
     }
 
-    const char *funcName = "__quantum__qis__mz__body";
-    auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
-    auto funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
+    mlir::Type result = op.getBit().getType();
+    mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
+
+    const std::string funcName = getQIRInsName("mz", "body");
+    const auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
+    const auto funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
     if (!funcOp) {
       mlir::OpBuilder::InsertionGuard guard(rewriter);
       rewriter.setInsertionPointToStart(moduleOp.getBody());
@@ -132,11 +140,11 @@ protected:
     llvm::SmallVector<mlir::Type, 2> params{param};
 
     if (auto ctrl = op.getControl()) {
-      funcName = getQIRCallableName(opName, "ctl");
+      funcName = getQIRInsName(opName, "ctl");
       args.push_back(adaptor.getControl());
       params.push_back(param);
     } else {
-      funcName = getQIRCallableName(opName, "body");
+      funcName = getQIRInsName(opName, "body");
     }
 
     const auto funcType = mlir::LLVM::LLVMFunctionType::get(voidType, params);
@@ -235,7 +243,7 @@ struct SwapOpLowering : mlir::OpConversionPattern<qpin::SwapOp> {
     const auto voidType = mlir::LLVM::LLVMVoidType::get(op.getContext());
     const auto param = mlir::LLVM::LLVMPointerType::get(op->getContext());
 
-    const std::string funcName = getQIRCallableName("swap", "body");
+    const std::string funcName = getQIRInsName("swap", "body");
     const llvm::SmallVector<mlir::Value, 2> args{adaptor.getA(),
                                                  adaptor.getB()};
     const llvm::SmallVector<mlir::Type, 2> params{param, param};
@@ -257,12 +265,11 @@ struct SwapOpLowering : mlir::OpConversionPattern<qpin::SwapOp> {
 };
 
 //===----------------------------------------------------------------------===//
-// Conversion Entry
+// Type Converter
 //===----------------------------------------------------------------------===//
 
-namespace {
-struct QPinTypeConverter : mlir::TypeConverter {
-  QPinTypeConverter(mlir::MLIRContext *ctx) {
+struct ConversionTypeConverter : mlir::TypeConverter {
+  ConversionTypeConverter(mlir::MLIRContext *ctx) {
     addConversion([](mlir::Type type) { return type; });
     addConversion([](StaticQubitType type) {
       return mlir::LLVM::LLVMPointerType::get(type.getContext());
@@ -271,7 +278,7 @@ struct QPinTypeConverter : mlir::TypeConverter {
 };
 } // namespace
 
-/// @brief QPin to LLVM Dialect Conversion Pass. Acts on KernelOp.
+/// @brief QPin to LLVM Dialect Conversion Pass.
 struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
   using QPinToLLVMBase::QPinToLLVMBase;
 
@@ -281,22 +288,30 @@ struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
     mlir::ConversionTarget target(*context);
     target.addLegalDialect<mlir::LLVM::LLVMDialect>();
     target.addIllegalDialect<QPinDialect>();
-    
+
     // A kernel implements the FuncOpInterface. To avoid
     // reimplementing (or worse, copying) the conversion to
-    // LLVM IR, kernel operations require a conversion to the 
-    // mlir::func::FuncDialect first (--qpin-to-func).
-    target.addLegalOp<qpin::KernelOp>();
+    // LLVM IR, kernel operations require a conversion to the
+    // mlir::func::FuncDialect (--qpin-to-func).
+    target.addDynamicallyLegalOp<qpin::KernelOp>([](qpin::KernelOp op) {
+      for (auto o : op.getBody().getOps<mlir::LLVM::CallOp>()) {
+        if (o.getCallee() == getQIRFuncString("rt__initialize")) {
+          return true;
+        }
+      }
+      return false;
+    });
     target.addLegalOp<qpin::ReturnOp>();
     target.addLegalOp<qpin::CallOp>();
 
-    QPinTypeConverter typeConverter(context);
+    ConversionTypeConverter typeConverter(context);
     mlir::LLVMTypeConverter llvmTypeConverter(context);
 
     mlir::RewritePatternSet patterns(context);
-    patterns.add<QubitOpLowering, MeasureOpLowering, HOpLowering, XOpLowering,
-                 YOpLowering, ZOpLowering, SOpLowering, TOpLowering,
-                 SwapOpLowering>(typeConverter, context);
+    patterns.add<KernelOpLowering, QubitOpLowering, MeasureOpLowering,
+                 HOpLowering, XOpLowering, YOpLowering, ZOpLowering,
+                 SOpLowering, TOpLowering, SwapOpLowering>(typeConverter,
+                                                           context);
 
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns)))) {

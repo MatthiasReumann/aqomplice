@@ -2,11 +2,9 @@
 
 #include "QPin/IR/QPinDialect.h"
 
-#include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Transforms/DialectConversion.h"
-#include "llvm/Support/FormatVariadic.h"
 #include <cassert>
 
 namespace aqomplice {
@@ -15,25 +13,59 @@ namespace aqomplice {
 
 namespace qpin {
 namespace {
-std::string getQIRCallableName(const std::string &op,
-                               const std::string &specialization) {
-  return llvm::formatv("__quantum__qis__{0}__{1}", op, specialization);
-}
-} // namespace
 
 //===----------------------------------------------------------------------===//
 // Kernel Operations
 //===----------------------------------------------------------------------===//
 
-struct KernelOpLowering {};
+struct KernelOpLowering : mlir::OpConversionPattern<qpin::KernelOp> {
+  using OpConversionPattern<qpin::KernelOp>::OpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(qpin::KernelOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    auto func = rewriter.create<mlir::func::FuncOp>(op.getLoc(), op.getName(),
+                                                    op.getFunctionType());
+    func->setAttr("target", mlir::StringAttr::get(op->getContext(), "qpu"));
+    func.setNoInline(true); // QPU kernels can't be inlined.
+
+    rewriter.inlineRegionBefore(op.getRegion(), func.getBody(), func.end());
+    rewriter.eraseOp(op);
+
+    return mlir::success();
+  }
+};
+
+struct ReturnOpLowering : mlir::OpConversionPattern<qpin::ReturnOp> {
+  using OpConversionPattern<qpin::ReturnOp>::OpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(qpin::ReturnOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    rewriter.replaceOpWithNewOp<mlir::func::ReturnOp>(
+        op, op->getResultTypes(), op->getOperands(), op->getAttrs());
+    return mlir::success();
+  }
+};
+
+struct CallOpLowering : mlir::OpConversionPattern<qpin::CallOp> {
+  using OpConversionPattern<qpin::CallOp>::OpConversionPattern;
+
+  mlir::LogicalResult
+  matchAndRewrite(qpin::CallOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    rewriter.replaceOpWithNewOp<mlir::func::CallOp>(
+        op, op.getCallee(), op->getResultTypes(), op->getOperands());
+    return mlir::success();
+  }
+};
 
 //===----------------------------------------------------------------------===//
-// Conversion Entry
+// Type Converter
 //===----------------------------------------------------------------------===//
 
-namespace {
-struct QPinTypeConverter : mlir::TypeConverter {
-  QPinTypeConverter(mlir::MLIRContext *ctx) {
+struct ConversionTypeConverter : mlir::TypeConverter {
+  ConversionTypeConverter(mlir::MLIRContext *ctx) {
     addConversion([](mlir::Type type) { return type; });
   }
 };
@@ -49,18 +81,11 @@ struct QPinToFunc : impl::QPinToFuncBase<QPinToFunc> {
     target.addLegalDialect<mlir::func::FuncDialect>();
     target.addIllegalDialect<QPinDialect>();
 
-    // A kernel implements the FuncOpInterface. To avoid
-    // reimplementing (or worse, copying) the conversion to
-    // LLVM IR, kernel operations require a conversion to the
-    // mlir::func::FuncDialect first (--qpin-to-func).
-    target.addIllegalOp<qpin::KernelOp>();
-    target.addIllegalOp<qpin::ReturnOp>();
-    target.addIllegalOp<qpin::CallOp>();
-
-    QPinTypeConverter typeConverter(context);
-    mlir::LLVMTypeConverter llvmTypeConverter(context);
+    ConversionTypeConverter typeConverter(context);
 
     mlir::RewritePatternSet patterns(context);
+    patterns.add<KernelOpLowering, ReturnOpLowering, CallOpLowering>(
+        typeConverter, context);
 
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns)))) {

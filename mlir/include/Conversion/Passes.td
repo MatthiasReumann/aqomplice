@@ -19,7 +19,7 @@ def QZapToQPin : Pass<"qzap-to-qpin"> {
   ];
 }
 
-def QPinToLLVM : Pass<"qpin-to-llvm", "qpin::KernelOp"> {
+def QPinToLLVM : Pass<"qpin-to-llvm"> {
   let summary = "lower `qpin` to `llvm` dialect";
   let description = [{}];
   let dependentDialects = [
