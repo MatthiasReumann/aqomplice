@@ -137,5 +137,19 @@ module {
 }
 ```
 
-## References
+## Related Work
+
+The `Q` and `QZap` dialects are based on the `Quantum` and respectively `QuantumSSA` dialect introduced by Ittah et al. [^1] It enforces **Static Single Assignment** (SSA) for quantum programs by utilizing value semantics. Thanks to SSA an array of (classical) optimization techniques can be applied to quantum programs with relative ease. 
+
+A **kernel** separates the **real-time** from **near-time** computation, as discussed in [^2]. Where the former refers to computations constrained by the physical traits of a quantum device (for example: the decoherance times of qubits). Essentially, a kernel is a special function that requires execution on a quantum accelerator. All quantum operations are located inside kernels. The idea of a kernel is inspired by QCOR [^3] as well as GPU kernels (and the associated MLIR dialect). As in the QCOR memory model, we assume that the quantum and classical device own shared memory. 
+
+[^1]: [QIRO: A Static Single Assignment-based Quantum Program Representation for Optimization](https://dl.acm.org/doi/10.1145/3491247)
+
+[^2]: [OpenQASM 3: A Broader and Deeper Quantum Assembly Language](https://dl.acm.org/doi/10.1145/3505636)
+
+[^3]: [QCOR: A Language Extension Specification for the Heterogeneous Quantum-Classical Model of Computation](http://arxiv.org/abs/1909.02457)
+
+[^4]: ['gpu' Dialect - MLIR](https://mlir.llvm.org/docs/Dialects/GPU/#gpufunc-gpugpufuncop)
+
+
 
