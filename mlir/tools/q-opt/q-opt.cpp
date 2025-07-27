@@ -8,19 +8,14 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-#include "Conversion/q-to-qzap/q-to-qzap.h"
-#include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
-#include "Conversion/qzap-to-qpin/qzap-to-qpin.h"
+#include "Conversion/Passes.h"
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
-
-  aqomplice::q::registerPasses();
-  aqomplice::qzap::registerPasses();
-  aqomplice::qpin::registerPasses();
+  aqomplice::registerPasses();
 
   mlir::DialectRegistry registry;
   registry.insert<aqomplice::q::QDialect, aqomplice::qzap::QZapDialect,

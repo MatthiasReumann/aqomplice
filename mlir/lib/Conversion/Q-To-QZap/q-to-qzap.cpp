@@ -9,10 +9,10 @@
 #include <utility>
 
 namespace aqomplice {
-namespace q {
 #define GEN_PASS_DEF_QTOQZAP
-#include "Conversion/q-to-qzap/q-to-qzap.h.inc" // adds `impl::QToQZapBase`
+#include "Conversion/Passes.h.inc" // adds `impl::QToQZapBase`
 
+namespace q {
 namespace {
 /// @brief Internal state for lowering quantum ops.
 struct LoweringContext {

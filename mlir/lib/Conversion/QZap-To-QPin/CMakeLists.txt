@@ -1,1 +1,6 @@
-add_mlir_dialect_library(AQOMPLICE_QZAP_TO_QPIN_LIB qzap-to-qpin.cpp DEPENDS MLIR_QZAP_TO_QPIN_INCGEN)
+add_mlir_conversion_library(AqompliceQZapToQPin
+  qzap-to-qpin.cpp
+
+  DEPENDS
+  AqompliceConversionPassIncGen
+)

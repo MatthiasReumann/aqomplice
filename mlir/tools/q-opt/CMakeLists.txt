@@ -4,14 +4,18 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 set(LIBS
     ${dialect_libs} 
     ${conversion_libs}
+    
     MLIROptLib
     MLIRFunctionInterfaces
-    AQOMPLICE_Q_LIB
-    AQOMPLICE_QPIN_LIB
-    AQOMPLICE_QZAP_LIB
-    AQOMPLICE_Q_TO_QZAP_LIB
-    AQOMPLICE_QZAP_TO_QPIN_LIB
-    AQOMPLICE_QPIN_TO_LLVM_LIB
+    
+    AqompliceQDialect
+    AqompliceQPinDialect
+    AqompliceQZapDialect
+    
+    AqompliceQToQZap
+    AqompliceQZapToQPin
+    AqompliceQPinToLLVM
+    AqompliceQPinToFunc
 )
 
 add_mlir_tool(q-opt q-opt.cpp DEPENDS ${LIBS} SUPPORT_PLUGINS)

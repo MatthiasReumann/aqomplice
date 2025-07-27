@@ -35,14 +35,11 @@ add_subdirectory(include/QPin/IR)
 add_subdirectory(lib/QPin/IR)
 
 # Conversions
-add_subdirectory(include/Conversion/q-to-qzap)
+add_subdirectory(include/Conversion)
 add_subdirectory(lib/Conversion/q-to-qzap)
-
-add_subdirectory(include/Conversion/qzap-to-qpin)
 add_subdirectory(lib/Conversion/qzap-to-qpin)
-
-add_subdirectory(include/Conversion/qpin-to-llvm)
 add_subdirectory(lib/Conversion/qpin-to-llvm)
+add_subdirectory(lib/Conversion/qpin-to-func)
 
 # Executables
 add_subdirectory(tools/q-opt)

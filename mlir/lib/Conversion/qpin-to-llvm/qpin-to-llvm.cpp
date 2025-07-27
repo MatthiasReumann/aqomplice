@@ -1,7 +1,6 @@
 #include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
 
 #include "QPin/IR/QPinDialect.h"
-#include "QZap/IR/QZapDialect.h"
 
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
@@ -14,16 +13,44 @@
 #include <cassert>
 
 namespace aqomplice {
-namespace qpin {
 #define GEN_PASS_DEF_QPINTOLLVM
-#include "Conversion/qpin-to-llvm/qpin-to-llvm.h.inc" // adds `impl::QPinToLLVMBase`
+#include "Conversion/Passes.h.inc" // adds `impl::QPinToLLVMBase`
 
+namespace qpin {
 namespace {
 std::string getQIRCallableName(const std::string &op,
                                const std::string &specialization) {
   return llvm::formatv("__quantum__qis__{0}__{1}", op, specialization);
 }
 } // namespace
+
+//===----------------------------------------------------------------------===//
+// Kernel Operations
+//===----------------------------------------------------------------------===//
+
+struct KernelOpLowering : mlir::ConvertOpToLLVMPattern<qpin::KernelOp> {
+  KernelOpLowering(const mlir::LLVMTypeConverter &converter)
+      : ConvertOpToLLVMPattern(converter) {}
+
+  mlir::LogicalResult
+  matchAndRewrite(qpin::KernelOp op, OpAdaptor adaptor,
+                  mlir::ConversionPatternRewriter &rewriter) const override {
+    auto func = llvm::dyn_cast<mlir::FunctionOpInterface>(op.getOperation());
+    if (!func) {
+      return rewriter.notifyMatchFailure(
+          op, "Could not cast kernel to FunctionOpInterface");
+    }
+
+    mlir::FailureOr<mlir::LLVM::LLVMFuncOp> llvmFunc =
+        mlir::convertFuncOpToLLVMFuncOp(func, rewriter, *getTypeConverter());
+    if (failed(llvmFunc))
+      return rewriter.notifyMatchFailure(
+          op, "Could not convert kernel to LLVM func");
+
+    rewriter.eraseOp(op);
+    return mlir::success();
+  }
+};
 
 //===----------------------------------------------------------------------===//
 // Quantum Register Operations
@@ -214,7 +241,7 @@ struct SwapOpLowering : mlir::OpConversionPattern<qpin::SwapOp> {
     const llvm::SmallVector<mlir::Type, 2> params{param, param};
 
     const auto funcType = mlir::LLVM::LLVMFunctionType::get(voidType, params);
-    
+
     const auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
     if (!funcOp) {
       mlir::OpBuilder::InsertionGuard guard(rewriter);
@@ -254,13 +281,18 @@ struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
     mlir::ConversionTarget target(*context);
     target.addLegalDialect<mlir::LLVM::LLVMDialect>();
     target.addIllegalDialect<QPinDialect>();
-    // Kernel operations have a separate conversion pass.
+    
+    // A kernel implements the FuncOpInterface. To avoid
+    // reimplementing (or worse, copying) the conversion to
+    // LLVM IR, kernel operations require a conversion to the 
+    // mlir::func::FuncDialect first (--qpin-to-func).
     target.addLegalOp<qpin::KernelOp>();
     target.addLegalOp<qpin::ReturnOp>();
     target.addLegalOp<qpin::CallOp>();
-    
 
     QPinTypeConverter typeConverter(context);
+    mlir::LLVMTypeConverter llvmTypeConverter(context);
+
     mlir::RewritePatternSet patterns(context);
     patterns.add<QubitOpLowering, MeasureOpLowering, HOpLowering, XOpLowering,
                  YOpLowering, ZOpLowering, SOpLowering, TOpLowering,

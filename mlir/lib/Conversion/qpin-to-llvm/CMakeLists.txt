@@ -1,1 +1,6 @@
-add_mlir_dialect_library(AQOMPLICE_QPIN_TO_LLVM_LIB qpin-to-llvm.cpp DEPENDS MLIR_QPIN_TO_LLVM_INCGEN)
+add_mlir_conversion_library(AqompliceQPinToLLVM
+  qpin-to-llvm.cpp
+
+  DEPENDS
+  AqompliceConversionPassIncGen
+)

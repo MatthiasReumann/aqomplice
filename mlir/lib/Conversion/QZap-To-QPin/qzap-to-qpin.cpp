@@ -8,10 +8,10 @@
 #include <cassert>
 
 namespace aqomplice {
-namespace qzap {
 #define GEN_PASS_DEF_QZAPTOQPIN
-#include "Conversion/qzap-to-qpin/qzap-to-qpin.h.inc" // adds `impl::QZapToQPinBase`
+#include "Conversion/Passes.h.inc" // adds `impl::QZapToQPinBase`
 
+namespace qzap {
 namespace {
 /// @brief Internal state for lowering quantum ops.
 struct LoweringContext {

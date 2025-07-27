@@ -4,11 +4,8 @@
 #include "mlir/Pass/Pass.h" // IWYU pragma: keep
 
 namespace aqomplice {
-namespace q {
-#define GEN_PASS_DECL
-#define GEN_PASS_REGISTRATION
-#include "Conversion/q-to-qzap/q-to-qzap.h.inc"
-}; // namespace q
+#define GEN_PASS_DECL_QTOQZAP
+#include "Conversion/Passes.h.inc"
 }; // namespace aqomplice
 
 #endif // AQOMPLICE_Q_CONVERSION_TO_QZAP_H

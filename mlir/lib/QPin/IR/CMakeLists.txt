@@ -1,1 +1,1 @@
-add_mlir_dialect_library(AQOMPLICE_QPIN_LIB QPinDialect.cpp QPinOps.cpp DEPENDS MLIRQPinOpsIncGen)
+add_mlir_dialect_library(AqompliceQPinDialect QPinDialect.cpp QPinOps.cpp DEPENDS MLIRQPinOpsIncGen)
