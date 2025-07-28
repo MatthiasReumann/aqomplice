@@ -1,5 +1,5 @@
 module {
-    qzap.kernel @ghz(%shared: memref<3xi1>) -> () {
+    qzap.kernel @ghz() -> (i1, i1, i1) {
       %nqubits = arith.constant 3 : i32
       
       %c0_i32 = arith.constant 0 : i32
@@ -26,21 +26,11 @@ module {
       %r6 = qzap.store %q22, %r5[%c2_i32]
       
       qzap.free %r6
-
-      %i0 = index.castu %c0_i32 : i32 to index
-      %i1 = index.castu %c1_i32 : i32 to index
-      %i2 = index.castu %c2_i32 : i32 to index
-      
-      memref.store %b0, %shared[%i0] : memref<3xi1>
-      memref.store %b1, %shared[%i1] : memref<3xi1>
-      memref.store %b2, %shared[%i2] : memref<3xi1>
-
-      qzap.return
+      qzap.return %b0, %b1, %b2 : i1, i1, i1
     }
 
     func.func @main() -> (i32) {
-      %shared = memref.alloc() : memref<3xi1>
-      qzap.call @ghz(%shared) : (memref<3xi1>) -> ()
+      %m:3 = qzap.call @ghz() : () -> (i1, i1, i1)
 
       %c0_i32 = arith.constant 0 : i32
       return %c0_i32 : i32
