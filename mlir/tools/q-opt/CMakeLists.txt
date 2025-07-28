@@ -16,6 +16,8 @@ set(LIBS
     AqompliceQZapToQPin
     AqompliceQPinToLLVM
     AqompliceQPinToFunc
+
+    AqompliceFitTopology
 )
 
 add_mlir_tool(q-opt q-opt.cpp DEPENDS ${LIBS} SUPPORT_PLUGINS)

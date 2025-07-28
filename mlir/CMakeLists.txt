@@ -43,6 +43,7 @@ add_subdirectory(lib/conversion/qpin-to-func)
 
 # Transforms
 add_subdirectory(include/transforms)
+add_subdirectory(lib/transforms/fit-topology)
 
 # Executables
 add_subdirectory(tools/q-opt)

@@ -14,6 +14,8 @@
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
 #include "conversion/passes.h"
+#include "transforms/passes.h"
+
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
@@ -36,7 +38,8 @@ void fullLoweringPipelineBuilder(mlir::OpPassManager &pm) {
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
-  aqomplice::registerPasses();
+  aqomplice::registerConversionsPasses();
+  aqomplice::registerTransformsPasses();
 
   mlir::DialectRegistry registry;
   registry.insert<aqomplice::q::QDialect, aqomplice::qzap::QZapDialect,
