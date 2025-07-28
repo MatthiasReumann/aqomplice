@@ -1,3 +1,7 @@
+#include "Conversion/q-to-qzap/q-to-qzap.h"
+#include "Conversion/qpin-to-func/qpin-to-func.h"
+#include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
+#include "Conversion/qzap-to-qpin/qzap-to-qpin.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Index/IR/IndexDialect.h"
@@ -14,6 +18,23 @@
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
 
+namespace {
+void fullLoweringPipelineBuilder(mlir::OpPassManager &pm) {
+  pm.addPass(aqomplice::createQToQZap());
+  pm.addPass(aqomplice::createQZapToQPin());
+
+  pm.addPass(mlir::createArithToLLVMConversionPass());
+  pm.addPass(mlir::createConvertIndexToLLVMPass());
+  pm.addPass(aqomplice::createQPinToLLVM());
+  pm.addPass(aqomplice::createQPinToFunc());
+  pm.addPass(mlir::createConvertFuncToLLVMPass());
+  pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
+
+  pm.addPass(mlir::createCanonicalizerPass());
+  // pm.addPass(mlir::createRemoveDeadValuesPass());
+}
+} // namespace
+
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
   aqomplice::registerPasses();
@@ -24,6 +45,9 @@ int main(int argc, char **argv) {
                   mlir::memref::MemRefDialect, mlir::func::FuncDialect,
                   mlir::index::IndexDialect, mlir::scf::SCFDialect,
                   mlir::LLVM::LLVMDialect>();
+
+  mlir::PassPipelineRegistration<>("full-lowering", "Lower from Q to LLVM IR.",
+                                   fullLoweringPipelineBuilder);
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
