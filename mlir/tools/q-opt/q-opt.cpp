@@ -1,7 +1,7 @@
-#include "Conversion/q-to-qzap/q-to-qzap.h"
-#include "Conversion/qpin-to-func/qpin-to-func.h"
-#include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
-#include "Conversion/qzap-to-qpin/qzap-to-qpin.h"
+#include "conversion/q-to-qzap/q-to-qzap.h"
+#include "conversion/qpin-to-func/qpin-to-func.h"
+#include "conversion/qpin-to-llvm/qpin-to-llvm.h"
+#include "conversion/qzap-to-qpin/qzap-to-qpin.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Index/IR/IndexDialect.h"
@@ -13,7 +13,7 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-#include "Conversion/Passes.h"
+#include "conversion/passes.h"
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
@@ -27,11 +27,10 @@ void fullLoweringPipelineBuilder(mlir::OpPassManager &pm) {
   pm.addPass(mlir::createConvertIndexToLLVMPass());
   pm.addPass(aqomplice::createQPinToLLVM());
   pm.addPass(aqomplice::createQPinToFunc());
-  pm.addPass(mlir::createConvertFuncToLLVMPass());
   pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
+  pm.addPass(mlir::createConvertFuncToLLVMPass());
 
   pm.addPass(mlir::createCanonicalizerPass());
-  // pm.addPass(mlir::createRemoveDeadValuesPass());
 }
 } // namespace
 

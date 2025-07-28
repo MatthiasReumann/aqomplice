@@ -5,7 +5,7 @@
 
 namespace aqomplice {
 #define GEN_PASS_DECL_QZAPTOQPIN
-#include "Conversion/Passes.h.inc"
+#include "conversion/passes.h.inc"
 }; // namespace aqomplice
 
 #endif // AQOMPLICE_QZAP_CONVERSION_TO_QPIN_H

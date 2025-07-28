@@ -1,6 +1,6 @@
-#include "Conversion/qpin-to-llvm/qpin-to-llvm.h"
+#include "conversion/qpin-to-llvm/qpin-to-llvm.h"
 
-#include "Common/qir.h"
+#include "common/qir.h"
 #include "QPin/IR/QPinDialect.h"
 
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
@@ -13,7 +13,7 @@
 
 namespace aqomplice {
 #define GEN_PASS_DEF_QPINTOLLVM
-#include "Conversion/Passes.h.inc" // adds `impl::QPinToLLVMBase`
+#include "conversion/passes.h.inc" // adds `impl::QPinToLLVMBase`
 
 namespace qpin {
 namespace {

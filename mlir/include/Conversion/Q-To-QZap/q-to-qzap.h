@@ -5,7 +5,7 @@
 
 namespace aqomplice {
 #define GEN_PASS_DECL_QTOQZAP
-#include "Conversion/Passes.h.inc"
+#include "conversion/passes.h.inc"
 }; // namespace aqomplice
 
 #endif // AQOMPLICE_Q_CONVERSION_TO_QZAP_H

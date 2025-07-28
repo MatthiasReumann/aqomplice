@@ -1,4 +1,4 @@
-#include "Conversion/qpin-to-func/qpin-to-func.h"
+#include "conversion/qpin-to-func/qpin-to-func.h"
 
 #include "QPin/IR/QPinDialect.h"
 
@@ -9,7 +9,7 @@
 
 namespace aqomplice {
 #define GEN_PASS_DEF_QPINTOFUNC
-#include "Conversion/Passes.h.inc" // adds `impl::QPinToFuncBase`
+#include "conversion/passes.h.inc" // adds `impl::QPinToFuncBase`
 
 namespace qpin {
 namespace {

@@ -1,4 +1,4 @@
-#include "Conversion/q-to-qzap/q-to-qzap.h"
+#include "conversion/q-to-qzap/q-to-qzap.h"
 
 #include "Q/IR/QDialect.h"
 #include "QZap/IR/QZapDialect.h"
@@ -10,7 +10,7 @@
 
 namespace aqomplice {
 #define GEN_PASS_DEF_QTOQZAP
-#include "Conversion/Passes.h.inc" // adds `impl::QToQZapBase`
+#include "conversion/passes.h.inc" // adds `impl::QToQZapBase`
 
 namespace q {
 namespace {
