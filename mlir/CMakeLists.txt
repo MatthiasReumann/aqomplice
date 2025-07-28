@@ -41,5 +41,8 @@ add_subdirectory(lib/conversion/qzap-to-qpin)
 add_subdirectory(lib/conversion/qpin-to-llvm)
 add_subdirectory(lib/conversion/qpin-to-func)
 
+# Transforms
+add_subdirectory(include/transforms)
+
 # Executables
 add_subdirectory(tools/q-opt)
