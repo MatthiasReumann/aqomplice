@@ -1,5 +1,5 @@
-#ifndef QPIN_TYPES
-#define QPIN_TYPES
+#ifndef AQOMPLICE_QPIN_TYPES_TD
+#define AQOMPLICE_QPIN_TYPES_TD
 
 include "QPin/IR/QPinDialect.td"
 include "mlir/IR/CommonTypeConstraints.td"
@@ -13,4 +13,4 @@ def StaticQubitType : QPin_Type<"StaticQubit", "StaticQubit"> {
     let summary = "a static (device) qubit";
 }
 
-#endif // QPIN_TYPES
+#endif // AQOMPLICE_QPIN_TYPES_TD

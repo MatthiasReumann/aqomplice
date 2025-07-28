@@ -1,5 +1,5 @@
-#ifndef AQOMPLICE_QZAPDIALECT_H
-#define AQOMPLICE_QZAPDIALECT_H
+#ifndef AQOMPLICE_QZAP_DIALECT_H
+#define AQOMPLICE_QZAP_DIALECT_H
 
 #include "mlir/Bytecode/BytecodeOpInterface.h"  // IWYU pragma: keep
 #include "mlir/IR/Dialect.h"                    // IWYU pragma: keep
@@ -7,24 +7,24 @@
 
 #include "QZap/IR/QZapOpsDialect.h.inc"
 
-#endif // AQOMPLICE_QZAPDIALECT_H
+#endif // AQOMPLICE_QZAP_DIALECT_H
 
 //===----------------------------------------------------------------------===//
 
-#ifndef AQOMPLICE_QZAPTYPES_H
-#define AQOMPLICE_QZAPTYPES_H
+#ifndef AQOMPLICE_QZAP_TYPES_H
+#define AQOMPLICE_QZAP_TYPES_H
 
 #include "mlir/IR/BuiltinTypes.h" // IWYU pragma: keep
 
 #define GET_TYPEDEF_CLASSES
 #include "QZap/IR/QZapOpsTypes.h.inc"
 
-#endif // AQOMPLICE_QZAPTYPES_H
+#endif // AQOMPLICE_QZAP_TYPES_H
 
 //===----------------------------------------------------------------------===//
 
-#ifndef AQOMPLICE_QZAPOPS_H
-#define AQOMPLICE_QZAPOPS_H
+#ifndef AQOMPLICE_QZAP_OPS_H
+#define AQOMPLICE_QZAP_OPS_H
 
 #include "mlir/IR/BuiltinTypes.h"                  // IWYU pragma: keep
 #include "mlir/IR/Dialect.h"                       // IWYU pragma: keep
@@ -38,4 +38,4 @@
 #define GET_OP_CLASSES
 #include "QZap/IR/QZapOps.h.inc"
 
-#endif // AQOMPLICE_QZAPOPS_H
+#endif // AQOMPLICE_QZAP_OPS_H

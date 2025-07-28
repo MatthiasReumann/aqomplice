@@ -1,5 +1,5 @@
-#ifndef QZAP_OPS
-#define QZAP_OPS
+#ifndef AQOMPLICE_QZAP_OPS_TD
+#define AQOMPLICE_QZAP_OPS_TD
 
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
@@ -173,4 +173,4 @@ def SwapOp : Unitary_Op<"swap", [Hermitian]> {
   let assemblyFormat = " attr-dict $a_in `,` $b_in `:` functional-type(operands, results) ";
 }
 
-#endif // QZAP_OPS
+#endif // AQOMPLICE_QZAP_OPS_TD

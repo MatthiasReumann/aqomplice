@@ -1,5 +1,5 @@
-#ifndef QZAP_DIALECT
-#define QZAP_DIALECT
+#ifndef AQOMPLICE_QZAP_DIALECT_TD
+#define AQOMPLICE_QZAP_DIALECT_TD
 
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
@@ -14,4 +14,4 @@ def QZap_Dialect : Dialect {
     let useDefaultTypePrinterParser = 1;
 }
 
-#endif // QZAP_DIALECT
+#endif // AQOMPLICE_QZAP_DIALECT_TD

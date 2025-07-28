@@ -1,5 +1,5 @@
-#ifndef QZAP_TYPES
-#define QZAP_TYPES
+#ifndef AQOMPLICE_QZAP_TYPES_TD
+#define AQOMPLICE_QZAP_TYPES_TD
 
 include "QZap/IR/QZapDialect.td"
 include "mlir/IR/CommonTypeConstraints.td"
@@ -17,4 +17,4 @@ def QubitArrayType : QZap_Type<"QubitArray", "QubitArray"> {
     let summary = "a qubit-array";
 }
 
-#endif // QZAP_TYPES
+#endif // AQOMPLICE_QZAP_TYPES_TD

@@ -1,5 +1,5 @@
-#ifndef AQOMPLICE_META_TRAITS_H
-#define AQOMPLICE_META_TRAITS_H
+#ifndef AQOMPLICE_COMMON_TRAITS_H
+#define AQOMPLICE_COMMON_TRAITS_H
 
 #include "mlir/IR/OpDefinition.h"
 
@@ -15,4 +15,4 @@ class HermitianTrait : public TraitBase<ConcreteType, HermitianTrait> {};
 } // namespace OpTrait
 } // namespace mlir
 
-#endif // AQOMPLICE_META_TRAITS_H
+#endif // AQOMPLICE_COMMON_TRAITS_H

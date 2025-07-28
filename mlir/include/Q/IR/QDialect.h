@@ -1,5 +1,5 @@
-#ifndef AQOMPLICE_QDIALECT_H
-#define AQOMPLICE_QDIALECT_H
+#ifndef AQOMPLICE_Q_DIALECT_H
+#define AQOMPLICE_Q_DIALECT_H
 
 #include "mlir/Bytecode/BytecodeOpInterface.h"  // IWYU pragma: keep
 #include "mlir/IR/Dialect.h"                    // IWYU pragma: keep
@@ -7,24 +7,24 @@
 
 #include "Q/IR/QOpsDialect.h.inc"
 
-#endif // AQOMPLICE_QDIALECT_H
+#endif // AQOMPLICE_Q_DIALECT_H
 
 //===----------------------------------------------------------------------===//
 
-#ifndef AQOMPLICE_QTYPES_H
-#define AQOMPLICE_QTYPES_H
+#ifndef AQOMPLICE_Q_TYPES_H
+#define AQOMPLICE_Q_TYPES_H
 
 #include "mlir/IR/BuiltinTypes.h" // IWYU pragma: keep
 
 #define GET_TYPEDEF_CLASSES
 #include "Q/IR/QOpsTypes.h.inc"
 
-#endif // AQOMPLICE_QTYPES_H
+#endif // AQOMPLICE_Q_TYPES_H
 
 //===----------------------------------------------------------------------===//
 
-#ifndef AQOMPLICE_QOPS_H
-#define AQOMPLICE_QOPS_H
+#ifndef AQOMPLICE_Q_OPS_H
+#define AQOMPLICE_Q_OPS_H
 
 #include "mlir/IR/BuiltinTypes.h"                  // IWYU pragma: keep
 #include "mlir/IR/Dialect.h"                       // IWYU pragma: keep
@@ -38,4 +38,4 @@
 #define GET_OP_CLASSES
 #include "Q/IR/QOps.h.inc"
 
-#endif // AQOMPLICE_QOPS_H
+#endif // AQOMPLICE_Q_OPS_H

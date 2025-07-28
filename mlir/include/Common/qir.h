@@ -1,5 +1,5 @@
-#ifndef AQOMPLICE_QIR_H
-#define AQOMPLICE_QIR_H
+#ifndef AQOMPLICE_COMMON_QIR_H
+#define AQOMPLICE_COMMON_QIR_H
 
 #include "llvm/Support/FormatVariadic.h"
 
@@ -14,4 +14,4 @@ inline std::string getQIRInsName(const std::string &op,
 }
 } // namespace aqomplice
 
-#endif // AQOMPLICE_QIR_H
+#endif // AQOMPLICE_COMMON_QIR_H

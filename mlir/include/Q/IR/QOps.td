@@ -1,5 +1,5 @@
-#ifndef Q_OPS
-#define Q_OPS
+#ifndef AQOMPLICE_Q_OPS_TD
+#define AQOMPLICE_Q_OPS_TD
 
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
@@ -166,4 +166,4 @@ def SwapOp : Unitary_Op<"swap", [Hermitian]> {
   let assemblyFormat = " attr-dict $a `,` $b";
 }
 
-#endif // Q_OPS
+#endif // AQOMPLICE_Q_OPS_TD

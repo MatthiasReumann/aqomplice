@@ -1,5 +1,5 @@
-#ifndef Q_TYPES
-#define Q_TYPES
+#ifndef AQOMPLICE_Q_TYPES_TD
+#define AQOMPLICE_Q_TYPES_TD
 
 include "Q/IR/QDialect.td"
 include "mlir/IR/CommonTypeConstraints.td"
@@ -17,4 +17,4 @@ def QubitArrayType : Q_Type<"QubitArray", "QubitArray"> {
     let summary = "a qubit-array";
 }
 
-#endif // Q_TYPES
+#endif // AQOMPLICE_Q_TYPES_TD

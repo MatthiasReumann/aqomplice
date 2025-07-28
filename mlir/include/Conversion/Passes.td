@@ -1,5 +1,5 @@
-#ifndef AQOMPLICE_CONVERSION_PASSES
-#define AQOMPLICE_CONVERSION_PASSES
+#ifndef AQOMPLICE_CONVERSION_PASSES_TD
+#define AQOMPLICE_CONVERSION_PASSES_TD
 
 include "mlir/Pass/PassBase.td"
 
@@ -35,4 +35,4 @@ def QPinToFunc : Pass<"qpin-to-func"> {
   ];
 }
 
-#endif // AQOMPLICE_CONVERSION_PASSES
+#endif // AQOMPLICE_CONVERSION_PASSES_TD

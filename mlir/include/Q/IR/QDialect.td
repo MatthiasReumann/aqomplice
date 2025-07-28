@@ -1,5 +1,5 @@
-#ifndef Q_DIALECT
-#define Q_DIALECT
+#ifndef AQOMPLICE_Q_DIALECT_TD
+#define AQOMPLICE_Q_DIALECT_TD
 
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
@@ -11,4 +11,4 @@ def Q_Dialect : Dialect {
     let useDefaultTypePrinterParser = 1;
 }
 
-#endif // Q_DIALECT
+#endif // AQOMPLICE_Q_DIALECT_TD
