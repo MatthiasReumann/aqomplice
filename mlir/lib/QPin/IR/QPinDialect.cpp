@@ -12,18 +12,20 @@
 #define GET_TYPEDEF_CLASSES
 #include "QPin/IR/QPinOpsTypes.cpp.inc" // adds type utilities
 
+#include "QPin/IR/QPinOpsInterfaces.cpp.inc" // adds interface methods
+
 namespace aqomplice {
 namespace qpin {
 void QPinDialect::initialize() {
   addTypes<
-#define GET_TYPEDEF_LIST
-#include "QPin/IR/QPinOpsTypes.cpp.inc" // adds list of comma-seperated type names
-      >();
-
+  #define GET_TYPEDEF_LIST
+  #include "QPin/IR/QPinOpsTypes.cpp.inc" // adds list of comma-seperated type names
+  >();
+  
   addOperations<
-#define GET_OP_LIST
-#include "QPin/IR/QPinOps.cpp.inc" // adds list of comma-seperated op names
-      >();
+  #define GET_OP_LIST
+  #include "QPin/IR/QPinOps.cpp.inc" // adds list of comma-seperated op names
+  >();
 }
-}; // namespace q
+}; // namespace qpin
 }; // namespace aqomplice

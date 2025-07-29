@@ -99,11 +99,38 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
   : Gate_Op<mnemonic, traits#[Unitary]>;
 
+def ControlledUnitaryOpInterface : OpInterface<"ControlledUnitaryOpInterface"> {
+  let description = [{}];
+  let methods = [
+    InterfaceMethod<
+      "Return the target qubit.", 
+      "mlir::Value", "getTarget"
+    >,
+    InterfaceMethod<
+      "Returns the control qubit.", 
+      "mlir::Value", "getControl"
+    >,
+    InterfaceMethod<
+      "Returns true if the op has a control qubit.", 
+      "bool", "hasControl"
+    >
+  ];
+  let cppNamespace = "::aqomplice::qpin";
+}
+
 class OptionallyControlledUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits> {
+  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
   let arguments = (ins StaticQubitType:$target, Optional<StaticQubitType>:$control);
   let results = (outs);
   let assemblyFormat = " attr-dict $target ( `ctrl` $control^ )?";
+  
+  // Add UnitaryOpInterface methods
+  let extraClassDeclaration = [{
+    bool hasControl() { 
+      if (auto ctrl = getControl()) { return true; }
+      return false; 
+    }
+  }];
 }
 
 def HOp : OptionallyControlledUnitary_Op<"h", [Hermitian]> {
