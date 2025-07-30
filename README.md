@@ -177,8 +177,58 @@ module {
 ```
 
 ```mlir
+// Fit five qubit star topology of IQM spark. Obtained by running: 
+//     q-opt --fit-topology="arch=iqm-spark"
+module {
+  qpin.kernel @qft(%arg0: memref<3xi1>) {
+    %c0_i32 = arith.constant 0 : i32
+    %c1_i32 = arith.constant 1 : i32
+    %c2_i32 = arith.constant 2 : i32
+
+    %0 = index.castu %c0_i32 : i32 to index
+    %1 = index.castu %c1_i32 : i32 to index
+    %2 = index.castu %c2_i32 : i32 to index
+
+    // Assign static (device) qubit values.
+    %3 = qpin.qubit 0
+    %4 = qpin.qubit 1
+    %5 = qpin.qubit 2
+    
+    // Apply three qubit QFT gate sequence.
+    qpin.h %3
+    qpin.swap %3, %5    // <- swap inserted to fit topology.
+    qpin.s %3 ctrl %4
+    qpin.t %3 ctrl %5
+    qpin.h %4
+    qpin.swap %4, %3    // <- swap inserted to fit topology.
+    qpin.s %4 ctrl %5
+    qpin.h %5
+    qpin.swap %3, %4    // <- swap inserted to fit topology.
+    qpin.swap %3, %5
+    
+    // Measure each qubit. Qubit permutation is considered when measuring.
+    %6 = qpin.measure %5
+    %7 = qpin.measure %4
+    %8 = qpin.measure %3
+    
+    memref.store %6, %arg0[%0] : memref<3xi1>
+    memref.store %7, %arg0[%1] : memref<3xi1>
+    memref.store %8, %arg0[%2] : memref<3xi1>
+    
+    qpin.return
+  }
+
+  func.func @main() {
+    %alloc = memref.alloc() : memref<3xi1>
+    qpin.call @qft(%alloc) : (memref<3xi1>) -> ()
+    return
+  }
+}
+```
+
+```mlir
 // LLVM IR with QIR. Obtained my running:
-//     q-opt --full-lowering
+//     q-opt --full-lowering="arch=iqm-spark"
 module {
   // LLVM Func declarations.
   llvm.func @malloc(i64) -> !llvm.ptr
@@ -201,19 +251,22 @@ module {
     %5 = llvm.inttoptr %1 : i32 to !llvm.ptr
     %6 = llvm.inttoptr %0 : i32 to !llvm.ptr
     
-    // Apply three qubit QFT gate sequence.
+    // Apply three qubit QFT gate sequence with additional swaps.
     llvm.call @__quantum__qis__h__body(%4) : (!llvm.ptr) -> ()
+    llvm.call @__quantum__qis__swap__body(%4, %6) : (!llvm.ptr, !llvm.ptr) -> ()
     llvm.call @__quantum__qis__s__ctl(%4, %5) : (!llvm.ptr, !llvm.ptr) -> ()
     llvm.call @__quantum__qis__t__ctl(%4, %6) : (!llvm.ptr, !llvm.ptr) -> ()
     llvm.call @__quantum__qis__h__body(%5) : (!llvm.ptr) -> ()
+    llvm.call @__quantum__qis__swap__body(%5, %4) : (!llvm.ptr, !llvm.ptr) -> ()
     llvm.call @__quantum__qis__s__ctl(%5, %6) : (!llvm.ptr, !llvm.ptr) -> ()
     llvm.call @__quantum__qis__h__body(%6) : (!llvm.ptr) -> ()
+    llvm.call @__quantum__qis__swap__body(%4, %5) : (!llvm.ptr, !llvm.ptr) -> ()
     llvm.call @__quantum__qis__swap__body(%4, %6) : (!llvm.ptr, !llvm.ptr) -> ()
     
     // Measure each qubit.
-    %7 = llvm.call @__quantum__qis__mz__body(%4) : (!llvm.ptr) -> i1
+    %7 = llvm.call @__quantum__qis__mz__body(%6) : (!llvm.ptr) -> i1
     %8 = llvm.call @__quantum__qis__mz__body(%5) : (!llvm.ptr) -> i1
-    %9 = llvm.call @__quantum__qis__mz__body(%6) : (!llvm.ptr) -> i1
+    %9 = llvm.call @__quantum__qis__mz__body(%4) : (!llvm.ptr) -> i1
     
     llvm.store %7, %arg1 : i1, !llvm.ptr
     %10 = llvm.getelementptr %arg1[1] : (!llvm.ptr) -> !llvm.ptr, i1
