@@ -1,0 +1,7 @@
+add_mlir_dialect_library(AqompliceQPinDialect
+  QPinDialect.cpp
+  QPinOps.cpp 
+    
+  DEPENDS 
+  AqompliceQPinIncGen
+)

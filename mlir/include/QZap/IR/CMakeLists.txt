@@ -1,0 +1,10 @@
+set(LLVM_TARGET_DEFINITIONS QZapOps.td)
+mlir_tablegen(QZapOps.h.inc -gen-op-decls)
+mlir_tablegen(QZapOps.cpp.inc -gen-op-defs)
+mlir_tablegen(QZapOpsDialect.h.inc -gen-dialect-decls)
+mlir_tablegen(QZapOpsDialect.cpp.inc -gen-dialect-defs)
+mlir_tablegen(QZapOpsTypes.h.inc -gen-typedef-decls)
+mlir_tablegen(QZapOpsTypes.cpp.inc -gen-typedef-defs)
+add_public_tablegen_target(AqompliceQZapIncGen)
+
+add_mlir_doc(QZapOps QZapOps Dialects/ -gen-op-doc)
