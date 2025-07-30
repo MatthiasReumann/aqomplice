@@ -1,6 +1,6 @@
 module {
-    qpin.kernel @ghz() -> (i1, i1, i1) {
-        // Assign static(device) qubit values.
+    qpin.kernel @ghz(%shared: memref<3xi1>) -> () {
+        // Assign static (device) qubit values.
         %q0 = qpin.qubit 0
         %q1 = qpin.qubit 1 
         %q2 = qpin.qubit 2
@@ -14,14 +14,21 @@ module {
         %b0 = qpin.measure %q0 
         %b1 = qpin.measure %q1 
         %b2 = qpin.measure %q2
+
+        %idx0 = index.constant 0
+        %idx1 = index.constant 1
+        %idx2 = index.constant 2
+
+        memref.store %b0, %shared[%idx0] : memref<3xi1>
+        memref.store %b1, %shared[%idx1] : memref<3xi1>
+        memref.store %b2, %shared[%idx2] : memref<3xi1>
       
-        qpin.return %b0, %b1, %b2 : i1, i1, i1
+        qpin.return
     }
 
-    func.func @main() -> (i32) {
-        %m:3 = qpin.call @ghz() : () -> (i1, i1, i1)
-
-        %c0_i32 = arith.constant 0 : i32
-        return %c0_i32 : i32
+    func.func @main() -> () {
+        %shared = memref.alloc() : memref<3xi1>
+        qpin.call @ghz(%shared) : (memref<3xi1>) -> ()
+        func.return
     }
 }
