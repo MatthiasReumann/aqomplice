@@ -1,10 +1,14 @@
 module {
-    qzap.kernel @qft() -> (i1, i1, i1) {
+    qzap.kernel @qft(%shared: memref<3xi1>) -> () {
       %nqubits = arith.constant 3 : i32
       
       %c0_i32 = arith.constant 0 : i32
       %c1_i32 = arith.constant 1 : i32
       %c2_i32 = arith.constant 2 : i32
+
+      %idx0 = index.castu %c0_i32 : i32 to index
+      %idx1 = index.castu %c1_i32 : i32 to index
+      %idx2 = index.castu %c2_i32 : i32 to index
       
       // Allocate quantum register with `nqubits` qubits.
       %r0 = qzap.alloc %nqubits
@@ -34,13 +38,17 @@ module {
       %r6 = qzap.store %q25, %r5[%c2_i32]
     
       qzap.free %r6
-      qzap.return %b0, %b1, %b2 : i1, i1, i1
+
+      memref.store %b0, %shared[%idx0] : memref<3xi1>
+      memref.store %b1, %shared[%idx1] : memref<3xi1>
+      memref.store %b2, %shared[%idx2] : memref<3xi1>
+
+      qzap.return
     }
 
-    func.func @main() -> (i32) {
-      %m:3 = qzap.call @qft() : () -> (i1, i1, i1)
-
-      %c0_i32 = arith.constant 0 : i32
-      return %c0_i32 : i32
+    func.func @main() -> () {
+      %shared = memref.alloc() : memref<3xi1>
+      qzap.call @qft(%shared) : (memref<3xi1>) -> ()
+      func.return
     }
 }
