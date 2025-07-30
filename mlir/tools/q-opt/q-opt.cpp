@@ -10,20 +10,32 @@
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllPasses.h"
+#include "mlir/Pass/PassOptions.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
 #include "conversion/passes.h"
+#include "transforms/fit-topology/fit-toplogy.h"
 #include "transforms/passes.h"
 
 #include "Q/IR/QDialect.h"
 #include "QPin/IR/QPinDialect.h"
 #include "QZap/IR/QZapDialect.h"
+#include <string>
 
 namespace {
-void fullLoweringPipelineBuilder(mlir::OpPassManager &pm) {
+struct FullLoweringOptions
+    : mlir::PassPipelineOptions<aqomplice::FitTopologyOptions> {
+  Option<std::string> arch{*this, "arch",
+                           llvm::cl::desc("The name of the architecture.")};
+};
+
+void fullLoweringPipelineBuilder(mlir::OpPassManager &pm,
+                                 const FullLoweringOptions &options) {
   pm.addPass(aqomplice::createQToQZap());
   pm.addPass(aqomplice::createQZapToQPin());
+  pm.addPass(aqomplice::createFitTopology(
+      aqomplice::FitTopologyOptions{options.arch}));
 
   pm.addPass(mlir::createArithToLLVMConversionPass());
   pm.addPass(mlir::createConvertIndexToLLVMPass());
@@ -34,7 +46,7 @@ void fullLoweringPipelineBuilder(mlir::OpPassManager &pm) {
 
   pm.addPass(mlir::createCanonicalizerPass());
 }
-} // namespace
+}; // namespace
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
@@ -48,8 +60,8 @@ int main(int argc, char **argv) {
                   mlir::index::IndexDialect, mlir::scf::SCFDialect,
                   mlir::LLVM::LLVMDialect>();
 
-  mlir::PassPipelineRegistration<>("full-lowering", "Lower from Q to LLVM IR.",
-                                   fullLoweringPipelineBuilder);
+  mlir::PassPipelineRegistration<FullLoweringOptions>(
+      "full-lowering", "Lower from Q to LLVM IR.", fullLoweringPipelineBuilder);
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));

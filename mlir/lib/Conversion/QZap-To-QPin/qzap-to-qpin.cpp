@@ -37,13 +37,6 @@ public:
 private:
   LoweringContext &state_;
 };
-} // namespace
-
-struct QZapToQPinTypeConverter : mlir::TypeConverter {
-  QZapToQPinTypeConverter(mlir::MLIRContext *ctx) {
-    addConversion([](mlir::Type type) { return type; });
-  }
-};
 
 //===----------------------------------------------------------------------===//
 // Kernel Operations
@@ -279,11 +272,13 @@ struct SwapOpLowering : StatefulOpConversionPattern<qzap::SwapOp> {
   }
 };
 
-//===----------------------------------------------------------------------===//
-// Conversion Entry
-//===----------------------------------------------------------------------===//
+struct ConversionTypeConverter : mlir::TypeConverter {
+  ConversionTypeConverter(mlir::MLIRContext *ctx) {
+    addConversion([](mlir::Type type) { return type; });
+  }
+};
+}; // namespace
 
-/// @brief QZap to QPin Dialect Conversion Pass
 struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
   using QZapToQPinBase::QZapToQPinBase;
 
@@ -296,7 +291,7 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
     target.addIllegalDialect<QZapDialect>();
     target.addLegalDialect<qpin::QPinDialect>();
 
-    QZapToQPinTypeConverter typeConverter(context);
+    ConversionTypeConverter typeConverter(context);
     mlir::RewritePatternSet patterns(context);
     patterns
         .add<KernelOpLowering, ReturnOpLowering, CallOpLowering,

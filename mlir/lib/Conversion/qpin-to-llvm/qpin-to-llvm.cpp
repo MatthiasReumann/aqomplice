@@ -1,7 +1,7 @@
 #include "conversion/qpin-to-llvm/qpin-to-llvm.h"
 
-#include "common/qir.h"
 #include "QPin/IR/QPinDialect.h"
+#include "common/qir.h"
 
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
@@ -278,7 +278,6 @@ struct ConversionTypeConverter : mlir::TypeConverter {
 };
 } // namespace
 
-/// @brief QPin to LLVM Dialect Conversion Pass.
 struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
   using QPinToLLVMBase::QPinToLLVMBase;
 

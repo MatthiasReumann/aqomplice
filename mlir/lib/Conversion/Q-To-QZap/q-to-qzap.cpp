@@ -50,18 +50,6 @@ public:
 private:
   LoweringContext &state_;
 };
-} // namespace
-
-struct QToQZapTypeConverter : mlir::TypeConverter {
-  QToQZapTypeConverter(mlir::MLIRContext *ctx) {
-    addConversion([](mlir::Type type) { return type; });
-    addConversion(
-        [ctx](q::QubitType type) { return qzap::QubitType::get(ctx); });
-    addConversion([ctx](q::QubitArrayType type) {
-      return qzap::QubitArrayType::get(ctx);
-    });
-  }
-};
 
 //===----------------------------------------------------------------------===//
 // Kernel Operations
@@ -195,7 +183,6 @@ struct MeasureOpLowering : StatefulOpConversionPattern<q::MeasureOp> {
 // Gate Operations
 //===----------------------------------------------------------------------===//
 
-namespace {
 template <typename SourceOp, typename DestOp>
 class OptionallyControlledUnitaryOpLowering
     : public StatefulOpConversionPattern<SourceOp> {
@@ -254,7 +241,6 @@ private:
     return mlir::success();
   }
 };
-} // namespace
 
 struct HOpLowering : OptionallyControlledUnitaryOpLowering<q::HOp, qzap::HOp> {
   using OptionallyControlledUnitaryOpLowering<
@@ -322,10 +308,21 @@ struct SwapOpLowering : StatefulOpConversionPattern<q::SwapOp> {
 };
 
 //===----------------------------------------------------------------------===//
-// Conversion Entry
+// Type Converter
 //===----------------------------------------------------------------------===//
 
-/// @brief Q to QZap Dialect Conversion Pass
+struct ConversionTypeConverter : mlir::TypeConverter {
+  ConversionTypeConverter(mlir::MLIRContext *ctx) {
+    addConversion([](mlir::Type type) { return type; });
+    addConversion(
+        [ctx](q::QubitType type) { return qzap::QubitType::get(ctx); });
+    addConversion([ctx](q::QubitArrayType type) {
+      return qzap::QubitArrayType::get(ctx);
+    });
+  }
+};
+}; // namespace
+
 struct QToQZap : impl::QToQZapBase<QToQZap> {
   using QToQZapBase::QToQZapBase;
 
@@ -339,7 +336,7 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
     target.addIllegalDialect<QDialect>();
     target.addLegalDialect<qzap::QZapDialect>();
 
-    QToQZapTypeConverter typeConverter(context);
+    ConversionTypeConverter typeConverter(context);
     mlir::RewritePatternSet patterns(context);
     patterns
         .add<KernelOpLowering, ReturnOpLowering, CallOpLowering>(typeConverter,
