@@ -46,60 +46,73 @@ Architecture::getShortestPathBetween(std::size_t a, std::size_t b) const {
   return {};
 }
 
+mlir::Value Architecture::getOrCreateQubit(mlir::Operation *op,
+                                           mlir::OpBuilder &builder,
+                                           std::vector<mlir::Value> &indices,
+                                           const std::size_t i) const {
+  if (!indices[i]) {
+    auto qubitType = qpin::StaticQubitType::get(op->getContext());
+    auto qubitOp = builder.create<qpin::QubitOp>(op->getLoc(), qubitType, i);
+    indices[i] = qubitOp.getQubit();
+  }
+  return indices[i];
+}
+
 void Architecture::localOptimalPerformSwap(
     mlir::OpBuilder &builder, mlir::Operation *op,
     llvm::DenseMap<mlir::Value, mlir::Value> &permutation,
-    std::vector<mlir::Value> &indices, mlir::Value a, mlir::Value b) {
-  // Identity mapping.
-  if (!permutation[a]) {
-    permutation[a] = a;
-  }
-  if (!permutation[b]) {
-    permutation[b] = b;
+    std::vector<mlir::Value> &indices, mlir::Value a, mlir::Value b) const {
+  if (!a || !b) { // Return early if one of the parameters is null.
+    return;
   }
 
-  const std::size_t tI =
-      mlir::dyn_cast<qpin::QubitOp>(permutation[a].getDefiningOp()).getIndex();
-  const std::size_t cI =
-      mlir::dyn_cast<qpin::QubitOp>(permutation[b].getDefiningOp()).getIndex();
+  // Identity mapping.
+  permutation.try_emplace(a, a);
+  permutation.try_emplace(b, b);
+
+  auto aDefiningOp = permutation[a].getDefiningOp();
+  auto bDefiningOp = permutation[b].getDefiningOp();
+  auto aQubitOp = mlir::dyn_cast<qpin::QubitOp>(aDefiningOp);
+  auto bQubitOp = mlir::dyn_cast<qpin::QubitOp>(bDefiningOp);
+
+  if (!aQubitOp || !bQubitOp) { // Return early if one is invalid.
+    return;
+  }
+
+  const std::size_t tI = aQubitOp.getIndex();
+  const std::size_t cI = bQubitOp.getIndex();
 
   if (hasEdgeBetween(tI, cI)) { // No SWAP required.
     return;
   }
 
-  std::vector<std::size_t> path = getShortestPathBetween(tI, cI);
+  const std::vector<std::size_t> path = getShortestPathBetween(tI, cI);
+  if (path.size() < 2) { // Return early if the path is empty or invalid.
+    return;
+  }
 
   builder.setInsertionPoint(op);
   for (auto it = path.rbegin(); it != std::prev(path.rend()); ++it) {
     const std::size_t x = *it;
     const std::size_t y = *(it + 1);
 
-    // Add static qubits if they don't exist.
-    if (!indices[x]) {
-      auto qubitType = qpin::StaticQubitType::get(op->getContext());
-      auto qubitOp = builder.create<qpin::QubitOp>(op->getLoc(), qubitType, x);
-      indices[x] = qubitOp.getQubit();
-    }
-    if (!indices[y]) {
-      auto qubitType = qpin::StaticQubitType::get(op->getContext());
-      auto qubitOp = builder.create<qpin::QubitOp>(op->getLoc(), qubitType, b);
-      indices[y] = qubitOp.getQubit();
-    }
-
-    const mlir::Value qa = indices[x];
-    const mlir::Value qb = indices[y];
+    // Get qubits by their indices (static qubit values). Add qpin.qubit if it
+    // doesn't exist.
+    const mlir::Value qa = getOrCreateQubit(op, builder, indices, x);
+    const mlir::Value qb = getOrCreateQubit(op, builder, indices, y);
 
     builder.create<qpin::SwapOp>(op->getLoc(), qa, qb);
 
-    permutation[qa] = qb;
-    permutation[qb] = qa;
+    permutation.try_emplace(qa, qa);
+    permutation.try_emplace(qb, qb);
 
+    std::swap(permutation[qa], permutation[qb]);
     std::swap(indices[x], indices[y]);
   }
 }
 
 void Architecture::localOptimalSwap(mlir::OpBuilder &builder,
-                                    mlir::Operation *op) {
+                                    mlir::Operation *op) const {
 
   std::vector<mlir::Value> indices(getNQubits());
   llvm::DenseMap<mlir::Value, mlir::Value> permutation{};
@@ -118,8 +131,16 @@ void Architecture::localOptimalSwap(mlir::OpBuilder &builder,
       localOptimalPerformSwap(builder, swap, permutation, indices, swap.getA(),
                               swap.getB());
     }
-
     return mlir::WalkResult::advance();
+  });
+
+  // Permute measurement bits for correct output.
+  op->walk([&](qpin::MeasureOp op) {
+    builder.setInsertionPointAfter(op);
+    auto newOp = builder.create<qpin::MeasureOp>(
+        op->getLoc(), op.getBit().getType(), permutation[op.getQubit()]);
+    op.getBit().replaceAllUsesWith(newOp.getBit());
+    op->erase();
   });
 }
 } // namespace aqomplice

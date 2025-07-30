@@ -28,7 +28,7 @@ public:
   std::vector<std::size_t> getShortestPathBetween(std::size_t a,
                                                   std::size_t b) const;
 
-  void localOptimalSwap(mlir::OpBuilder &builder, mlir::Operation *op);
+  void localOptimalSwap(mlir::OpBuilder &builder, mlir::Operation *op) const;
 
 private:
   bool hasEdge(const Edge &e) const {
@@ -39,7 +39,11 @@ private:
   localOptimalPerformSwap(mlir::OpBuilder &builder, mlir::Operation *op,
                           llvm::DenseMap<mlir::Value, mlir::Value> &permutation,
                           std::vector<mlir::Value> &indices, mlir::Value a,
-                          mlir::Value b);
+                          mlir::Value b) const;
+
+  mlir::Value getOrCreateQubit(mlir::Operation *op, mlir::OpBuilder &builder,
+                               std::vector<mlir::Value> &indices,
+                               const std::size_t i) const;
 
   std::size_t nqubits_;
   std::vector<Edge> edges_;
