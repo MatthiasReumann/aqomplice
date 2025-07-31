@@ -47,8 +47,8 @@ def KernelOp : Q_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
 def ReturnOp : Q_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
   let summary = "return from quantum kernel";
   let description = [{}];
-  let arguments = (ins Variadic<I1>:$input);
-  let assemblyFormat = "attr-dict ($input^ `:` type($input))?";
+  let arguments = (ins Variadic<AnyType>:$operands);
+  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
 def CallOp : Q_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
@@ -60,7 +60,7 @@ def CallOp : Q_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
     OptionalAttr<DictArrayAttr>:$arg_attrs,
     OptionalAttr<DictArrayAttr>:$res_attrs
   );
-  let results = (outs Variadic<I1>);
+  let results = (outs Variadic<AnyType>);
   let assemblyFormat = [{ 
     $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
   }];
