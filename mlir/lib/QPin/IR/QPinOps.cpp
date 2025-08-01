@@ -57,126 +57,43 @@ bool usedAfterMeasurement<qpin::SwapOp>(const llvm::DenseSet<Value> &measured,
 /**
  * @brief Verify that the kernel fulfills QIR's base profile.
  */
-llvm::LogicalResult KernelOp::verifyRegions() {
-  llvm::DenseSet<Value> measured{};
-  for (auto &op : getBody().getOps()) {
-    if (isa<scf::SCFDialect>(op.getDialect())) {
-      return emitOpError() << "No classical control flow elements are allowed "
-                              "in a kernel (as of now).";
-    }
+// llvm::LogicalResult KernelOp::verifyRegions() {
+//   llvm::DenseSet<Value> measured{};
+//   for (auto &op : getBody().getOps()) {
+//     if (isa<scf::SCFDialect>(op.getDialect())) {
+//       return emitOpError() << "No classical control flow elements are allowed "
+//                               "in a kernel (as of now).";
+//     }
 
-    if (isa<arith::ArithDialect>(op.getDialect())) {
-      if (!isa<arith::ConstantOp>(op)) {
-        return emitOpError() << "No arithmetic or other calculations may be "
-                                "performed with classical values.";
-      }
-    }
+//     if (isa<arith::ArithDialect>(op.getDialect())) {
+//       if (!isa<arith::ConstantOp>(op)) {
+//         return emitOpError() << "No arithmetic or other calculations may be "
+//                                 "performed with classical values.";
+//       }
+//     }
 
-    if (!isa<qpin::QPinDialect>(op.getDialect())) {
-      continue;
-    }
+//     if (!isa<qpin::QPinDialect>(op.getDialect())) {
+//       continue;
+//     }
 
-    if (auto measureOp = dyn_cast<qpin::MeasureOp>(op)) {
-      measured.insert(measureOp.getQubit());
+//     if (auto measureOp = dyn_cast<qpin::MeasureOp>(op)) {
+//       measured.insert(measureOp.getQubit());
 
-    } else { // Gate operations
-      if (usedAfterMeasurement<qpin::HOp>(measured, op) ||
-          usedAfterMeasurement<qpin::XOp>(measured, op) ||
-          usedAfterMeasurement<qpin::YOp>(measured, op) ||
-          usedAfterMeasurement<qpin::ZOp>(measured, op) ||
-          usedAfterMeasurement<qpin::SOp>(measured, op) ||
-          usedAfterMeasurement<qpin::TOp>(measured, op) ||
-          usedAfterMeasurement<qpin::SwapOp>(measured, op)) {
-        return emitOpError() << "Once a qubit is measured, nothing further "
-                                "will be done with it other than releasing it.";
-      }
-    }
-  }
+//     } else { // Gate operations
+//       if (usedAfterMeasurement<qpin::HOp>(measured, op) ||
+//           usedAfterMeasurement<qpin::XOp>(measured, op) ||
+//           usedAfterMeasurement<qpin::YOp>(measured, op) ||
+//           usedAfterMeasurement<qpin::ZOp>(measured, op) ||
+//           usedAfterMeasurement<qpin::SOp>(measured, op) ||
+//           usedAfterMeasurement<qpin::TOp>(measured, op) ||
+//           usedAfterMeasurement<qpin::SwapOp>(measured, op)) {
+//         return emitOpError() << "Once a qubit is measured, nothing further "
+//                                 "will be done with it other than releasing it.";
+//       }
+//     }
+//   }
 
-  return success();
-}
-
-void KernelOp::build(OpBuilder &builder, OperationState &state,
-                     llvm::StringRef name, FunctionType type,
-                     llvm::ArrayRef<NamedAttribute> attrs) {
-  // FunctionOpInterface provides a convenient `build` method that will populate
-  // the state of our FuncOp, and create an entry block.
-  buildWithEntryBlock(builder, state, name, type, attrs, type.getInputs());
-}
-
-ParseResult KernelOp::parse(OpAsmParser &parser, OperationState &result) {
-  // Dispatch to the FunctionOpInterface provided utility method that parses the
-  // function operation.
-  auto buildFuncType =
-      [](Builder &builder, llvm::ArrayRef<Type> argTypes,
-         llvm::ArrayRef<Type> results, function_interface_impl::VariadicFlag,
-         std::string &) { return builder.getFunctionType(argTypes, results); };
-
-  return function_interface_impl::parseFunctionOp(
-      parser, result, false, getFunctionTypeAttrName(result.name),
-      buildFuncType, getArgAttrsAttrName(result.name),
-      getResAttrsAttrName(result.name));
-}
-
-void KernelOp::print(OpAsmPrinter &p) {
-  // Dispatch to the FunctionOpInterface provided utility method that prints the
-  // function operation.
-  function_interface_impl::printFunctionOp(
-      p, *this, false, getFunctionTypeAttrName(), getArgAttrsAttrName(),
-      getResAttrsAttrName());
-}
-
-/**
- * @brief Verify that the number and types match the kernel signature.
- */
-LogicalResult ReturnOp::verify() {
-  auto kernel = cast<KernelOp>((*this)->getParentOp());
-
-  const auto &results = kernel.getFunctionType().getResults();
-  if (getNumOperands() != results.size())
-    return emitOpError("has ")
-           << getNumOperands() << " operands, but enclosing function (@"
-           << kernel.getName() << ") returns " << results.size();
-
-  for (unsigned i = 0, e = results.size(); i != e; ++i)
-    if (getOperand(i).getType() != results[i])
-      return emitError() << "type of return operand " << i << " ("
-                         << getOperand(i).getType()
-                         << ") doesn't match function result type ("
-                         << results[i] << ")"
-                         << " in kernel @" << kernel.getName();
-
-  return success();
-}
-
-/**
- * @brief Return the callee of the generic call operation.
- * @note This is required by the call interface.
- */
-CallInterfaceCallable CallOp::getCallableForCallee() {
-  return (*this)->getAttrOfType<SymbolRefAttr>("callee");
-}
-
-/**
- * @brief Set the callee for the generic call operation.
- * @note This is required by the call interface.
- */
-void CallOp::setCalleeFromCallable(CallInterfaceCallable callee) {
-  (*this)->setAttr("callee", cast<SymbolRefAttr>(callee));
-}
-
-/**
- * @brief Get the argument operands to the called function.
- * @note This is required by the call interface.
- */
-Operation::operand_range CallOp::getArgOperands() { return getOperands(); }
-
-/**
- * @brief Get the argument operands to the called function as a mutable range.
- * @note This is required by the call interface.
- */
-MutableOperandRange CallOp::getArgOperandsMutable() {
-  return getOperandsMutable();
-}
+//   return success();
+// }
 }; // namespace qpin
 }; // namespace aqomplice

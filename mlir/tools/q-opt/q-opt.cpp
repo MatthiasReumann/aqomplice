@@ -1,5 +1,4 @@
 #include "conversion/q-to-qzap/q-to-qzap.h"
-#include "conversion/qpin-to-func/qpin-to-func.h"
 #include "conversion/qpin-to-llvm/qpin-to-llvm.h"
 #include "conversion/qzap-to-qpin/qzap-to-qpin.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"

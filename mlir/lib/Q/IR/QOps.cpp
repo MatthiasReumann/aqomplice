@@ -57,143 +57,60 @@ bool usedAfterMeasurement<q::SwapOp>(const llvm::DenseSet<Value> &measured,
 /**
  * @brief Verify that the kernel fulfills QIR's base profile.
  */
-llvm::LogicalResult KernelOp::verifyRegions() {
-  bool hasFree = false;
-  bool hasAlloc = false;
-  llvm::DenseSet<Value> measured{};
-  for (auto &op : getBody().getOps()) {
-    if (isa<scf::SCFDialect>(op.getDialect())) {
-      return emitOpError() << "No classical control flow elements are allowed "
-                              "in a kernel (as of now).";
-    }
+// llvm::LogicalResult verifyRegions() {
+//   bool hasFree = false;
+//   bool hasAlloc = false;
+//   llvm::DenseSet<Value> measured{};
+//   for (auto &op : getBody().getOps()) {
+//     if (isa<scf::SCFDialect>(op.getDialect())) {
+//       return emitOpError() << "No classical control flow elements are allowed "
+//                               "in a kernel (as of now).";
+//     }
 
-    if (isa<arith::ArithDialect>(op.getDialect())) {
-      if (!isa<arith::ConstantOp>(op)) {
-        return emitOpError() << "No arithmetic or other calculations may be "
-                                "performed with classical values.";
-      }
-    }
+//     if (isa<arith::ArithDialect>(op.getDialect())) {
+//       if (!isa<arith::ConstantOp>(op)) {
+//         return emitOpError() << "No arithmetic or other calculations may be "
+//                                 "performed with classical values.";
+//       }
+//     }
 
-    if (!isa<q::QDialect>(op.getDialect())) {
-      continue;
-    }
+//     if (!isa<q::QDialect>(op.getDialect())) {
+//       continue;
+//     }
 
-    if (auto allocOp = mlir::dyn_cast<q::AllocOp>(op)) {
-      if (hasAlloc) {
-        return emitOpError()
-               << "A kernel must have exactly zero or one alloc calls.";
-      }
-      hasAlloc = true;
+//     if (auto allocOp = mlir::dyn_cast<q::AllocOp>(op)) {
+//       if (hasAlloc) {
+//         return emitOpError()
+//                << "A kernel must have exactly zero or one alloc calls.";
+//       }
+//       hasAlloc = true;
 
-    } else if (auto freeOp = mlir::dyn_cast<q::FreeOp>(op)) {
-      hasFree = true;
+//     } else if (auto freeOp = mlir::dyn_cast<q::FreeOp>(op)) {
+//       hasFree = true;
 
-    } else if (auto measureOp = mlir::dyn_cast<q::MeasureOp>(op)) {
-      measured.insert(measureOp.getQubit());
+//     } else if (auto measureOp = mlir::dyn_cast<q::MeasureOp>(op)) {
+//       measured.insert(measureOp.getQubit());
 
-    } else { // Gate operations
-      if (usedAfterMeasurement<q::HOp>(measured, op) ||
-          usedAfterMeasurement<q::XOp>(measured, op) ||
-          usedAfterMeasurement<q::YOp>(measured, op) ||
-          usedAfterMeasurement<q::ZOp>(measured, op) ||
-          usedAfterMeasurement<q::SOp>(measured, op) ||
-          usedAfterMeasurement<q::TOp>(measured, op) ||
-          usedAfterMeasurement<q::SwapOp>(measured, op)) {
-        return emitOpError() << "Once a qubit is measured, nothing further "
-                                "will be done with it other than releasing it.";
-      }
-    }
-  }
+//     } else { // Gate operations
+//       if (usedAfterMeasurement<q::HOp>(measured, op) ||
+//           usedAfterMeasurement<q::XOp>(measured, op) ||
+//           usedAfterMeasurement<q::YOp>(measured, op) ||
+//           usedAfterMeasurement<q::ZOp>(measured, op) ||
+//           usedAfterMeasurement<q::SOp>(measured, op) ||
+//           usedAfterMeasurement<q::TOp>(measured, op) ||
+//           usedAfterMeasurement<q::SwapOp>(measured, op)) {
+//         return emitOpError() << "Once a qubit is measured, nothing further "
+//                                 "will be done with it other than releasing it.";
+//       }
+//     }
+//   }
 
-  if (hasAlloc && !hasFree) {
-    return emitOpError() << "Missing q.free.";
-  }
+//   if (hasAlloc && !hasFree) {
+//     return emitOpError() << "Missing q.free.";
+//   }
 
-  return mlir::success();
-}
+//   return mlir::success();
+// }
 
-void KernelOp::build(OpBuilder &builder, OperationState &state,
-                     llvm::StringRef name, FunctionType type,
-                     llvm::ArrayRef<NamedAttribute> attrs) {
-  // FunctionOpInterface provides a convenient `build` method that will populate
-  // the state of our FuncOp, and create an entry block.
-  buildWithEntryBlock(builder, state, name, type, attrs, type.getInputs());
-}
-
-ParseResult KernelOp::parse(OpAsmParser &parser, OperationState &result) {
-  // Dispatch to the FunctionOpInterface provided utility method that parses the
-  // function operation.
-  auto buildFuncType =
-      [](Builder &builder, llvm::ArrayRef<Type> argTypes,
-         llvm::ArrayRef<Type> results, function_interface_impl::VariadicFlag,
-         std::string &) { return builder.getFunctionType(argTypes, results); };
-
-  return function_interface_impl::parseFunctionOp(
-      parser, result, false, getFunctionTypeAttrName(result.name),
-      buildFuncType, getArgAttrsAttrName(result.name),
-      getResAttrsAttrName(result.name));
-}
-
-void KernelOp::print(OpAsmPrinter &p) {
-  // Dispatch to the FunctionOpInterface provided utility method that prints the
-  // function operation.
-  function_interface_impl::printFunctionOp(
-      p, *this, false, getFunctionTypeAttrName(), getArgAttrsAttrName(),
-      getResAttrsAttrName());
-}
-
-/**
- * @brief Verify that the number and types match the kernel signature.
- */
-LogicalResult ReturnOp::verify() {
-  auto kernel = cast<KernelOp>((*this)->getParentOp());
-
-  // The operand number and types must match the function signature.
-  const auto &results = kernel.getFunctionType().getResults();
-  if (getNumOperands() != results.size())
-    return emitOpError("has ")
-           << getNumOperands() << " operands, but enclosing function (@"
-           << kernel.getName() << ") returns " << results.size();
-
-  for (unsigned i = 0, e = results.size(); i != e; ++i)
-    if (getOperand(i).getType() != results[i])
-      return emitError() << "type of return operand " << i << " ("
-                         << getOperand(i).getType()
-                         << ") doesn't match function result type ("
-                         << results[i] << ")"
-                         << " in kernel @" << kernel.getName();
-
-  return success();
-}
-
-/**
- * @brief Return the callee of the generic call operation.
- * @note This is required by the call interface.
- */
-CallInterfaceCallable CallOp::getCallableForCallee() {
-  return (*this)->getAttrOfType<SymbolRefAttr>("callee");
-}
-
-/**
- * @brief Set the callee for the generic call operation.
- * @note This is required by the call interface.
- */
-void CallOp::setCalleeFromCallable(CallInterfaceCallable callee) {
-  (*this)->setAttr("callee", cast<SymbolRefAttr>(callee));
-}
-
-/**
- * @brief Get the argument operands to the called function.
- * @note This is required by the call interface.
- */
-Operation::operand_range CallOp::getArgOperands() { return getOperands(); }
-
-/**
- * @brief Get the argument operands to the called function as a mutable range.
- * @note This is required by the call interface.
- */
-MutableOperandRange CallOp::getArgOperandsMutable() {
-  return getOperandsMutable();
-}
 }; // namespace q
 }; // namespace aqomplice

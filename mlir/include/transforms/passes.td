@@ -3,7 +3,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def FitTopology : Pass<"fit-topology", "qpin::KernelOp"> {
+def FitTopology : Pass<"fit-topology"> {
   let summary = "Fit quantum operations in qpin.kernel to hardware topology.";
   let description = [{}];
   let options = [

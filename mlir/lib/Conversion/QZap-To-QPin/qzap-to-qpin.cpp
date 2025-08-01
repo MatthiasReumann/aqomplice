@@ -39,49 +39,6 @@ private:
 };
 
 //===----------------------------------------------------------------------===//
-// Kernel Operations
-//===----------------------------------------------------------------------===//
-
-struct KernelOpLowering : mlir::OpConversionPattern<qzap::KernelOp> {
-  using OpConversionPattern<qzap::KernelOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::KernelOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    auto kernel = rewriter.create<qpin::KernelOp>(op.getLoc(), op.getSymName(),
-                                                  op.getFunctionType());
-    kernel.eraseBody();
-    rewriter.inlineRegionBefore(op.getRegion(), kernel.getBody(), kernel.end());
-    rewriter.eraseOp(op);
-    return mlir::success();
-  }
-};
-
-struct ReturnOpLowering : mlir::OpConversionPattern<qzap::ReturnOp> {
-  using OpConversionPattern<qzap::ReturnOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::ReturnOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    rewriter.replaceOpWithNewOp<qpin::ReturnOp>(
-        op, op->getResultTypes(), op->getOperands(), op->getAttrs());
-    return mlir::success();
-  }
-};
-
-struct CallOpLowering : mlir::OpConversionPattern<qzap::CallOp> {
-  using OpConversionPattern<qzap::CallOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::CallOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    rewriter.replaceOpWithNewOp<qpin::CallOp>(op, op->getResultTypes(),
-                                              op.getOperands(), op->getAttrs());
-    return mlir::success();
-  }
-};
-
-//===----------------------------------------------------------------------===//
 // Quantum Register Operations
 //===----------------------------------------------------------------------===//
 
@@ -256,9 +213,7 @@ struct QZapToQPin : impl::QZapToQPinBase<QZapToQPin> {
 
     ConversionTypeConverter typeConverter(context);
     mlir::RewritePatternSet patterns(context);
-    patterns
-        .add<KernelOpLowering, ReturnOpLowering, CallOpLowering,
-             AllocOpLowering, FreeOpLowering>(typeConverter, context)
+    patterns.add<AllocOpLowering, FreeOpLowering>(typeConverter, context)
         .add<RetrieveOpLowering, MeasureOpLowering, StoreOpLowering,
              HOpLowering, XOpLowering, SOpLowering, TOpLowering,
              SwapOpLowering>(typeConverter, context, state);

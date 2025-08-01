@@ -17,64 +17,13 @@ class QZap_Op<string mnemonic, list<Trait> traits = []>
     : Op<QZap_Dialect, mnemonic, traits>;
 
 //===----------------------------------------------------------------------===//
-// Kernel Operations
-//===----------------------------------------------------------------------===//
-
-def KernelOp : QZap_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
-  let summary = "quantum kernel";
-  let arguments = (ins SymbolNameAttr:$sym_name,
-      TypeAttrOf<FunctionType>:$function_type,
-      OptionalAttr<DictArrayAttr>:$arg_attrs,
-      OptionalAttr<DictArrayAttr>:$res_attrs);
-  let regions = (region AnyRegion:$body);
-
-  let builders = [OpBuilder<(ins "mlir::StringRef":$name,
-      "mlir::FunctionType":$type,
-      CArg<"mlir::ArrayRef<mlir::NamedAttribute>", "{}">:$attrs)>];
-
-  // Add FunctionOpInterface methods
-  let extraClassDeclaration = [{
-        mlir::ArrayRef<mlir::Type> getArgumentTypes() { return getFunctionType().getInputs(); }
-        mlir::ArrayRef<mlir::Type> getResultTypes() { return getFunctionType().getResults(); }
-        mlir::Region *getCallableRegion() { return &getBody(); }
-    }];
-
-  let hasCustomAssemblyFormat = 1;
-  let skipDefaultBuilders = 1;
-  let hasRegionVerifier = 1;
-}
-
-def ReturnOp : QZap_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
-  let summary = "return from quantum kernel";
-  let description = [{}];
-  let arguments = (ins Variadic<AnyType>:$operands);
-  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
-  let hasVerifier = 1;
-}
-
-def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
-  let summary = "call quantum kernel";
-  let description = [{}];
-  let arguments = (ins
-    FlatSymbolRefAttr:$callee,
-    Variadic<AnyType>:$operands,
-    OptionalAttr<DictArrayAttr>:$arg_attrs,
-    OptionalAttr<DictArrayAttr>:$res_attrs
-  );
-  let results = (outs Variadic<AnyType>);
-  let assemblyFormat = [{ 
-    $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
-  }];
-}
-
-//===----------------------------------------------------------------------===//
 // Quantum Register Operations
 //===----------------------------------------------------------------------===//
 
 class Memory_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
-def AllocOp : Memory_Op<"alloc", [HasParent<"KernelOp">]> {
+def AllocOp : Memory_Op<"alloc"> {
   let summary = "allocate n qubits into a quantum register";
   let description = [{
     Ensures implicitly that all other quantum 

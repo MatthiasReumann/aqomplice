@@ -70,49 +70,6 @@ private:
 };
 
 //===----------------------------------------------------------------------===//
-// Kernel Operations
-//===----------------------------------------------------------------------===//
-
-struct KernelOpLowering : mlir::OpConversionPattern<q::KernelOp> {
-  using OpConversionPattern<q::KernelOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(q::KernelOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    auto kernel = rewriter.create<qzap::KernelOp>(op.getLoc(), op.getSymName(),
-                                                  op.getFunctionType());
-    kernel.eraseBody();
-    rewriter.inlineRegionBefore(op.getRegion(), kernel.getBody(), kernel.end());
-    rewriter.eraseOp(op);
-    return mlir::success();
-  }
-};
-
-struct ReturnOpLowering : mlir::OpConversionPattern<q::ReturnOp> {
-  using OpConversionPattern<q::ReturnOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(q::ReturnOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    rewriter.replaceOpWithNewOp<qzap::ReturnOp>(
-        op, op->getResultTypes(), op->getOperands(), op->getAttrs());
-    return mlir::success();
-  }
-};
-
-struct CallOpLowering : mlir::OpConversionPattern<q::CallOp> {
-  using OpConversionPattern<q::CallOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(q::CallOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    rewriter.replaceOpWithNewOp<qzap::CallOp>(op, op->getResultTypes(),
-                                              op.getOperands(), op->getAttrs());
-    return mlir::success();
-  }
-};
-
-//===----------------------------------------------------------------------===//
 // Quantum Register Operations
 //===----------------------------------------------------------------------===//
 
@@ -278,8 +235,6 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
     ConversionTypeConverter typeConverter(context);
     mlir::RewritePatternSet patterns(context);
     patterns
-        .add<KernelOpLowering, ReturnOpLowering, CallOpLowering>(typeConverter,
-                                                                 context)
         .add<AllocOpLowering, FreeOpLowering, RetrieveOpLowering,
              MeasureOpLowering, HOpLowering, XOpLowering, YOpLowering,
              ZOpLowering, SOpLowering, TOpLowering, SwapOpLowering>(

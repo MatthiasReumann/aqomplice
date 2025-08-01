@@ -27,12 +27,4 @@ def QPinToLLVM : Pass<"qpin-to-llvm"> {
   ];
 }
 
-def QPinToFunc : Pass<"qpin-to-func"> {
-  let summary = "lower `qpin` kernel ops to `func` dialect ops";
-  let description = [{}];
-  let dependentDialects = [
-    "mlir::func::FuncDialect"
-  ];
-}
-
 #endif // AQOMPLICE_CONVERSION_PASSES_TD

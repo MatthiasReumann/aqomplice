@@ -15,7 +15,6 @@ set(LIBS
     AqompliceQToQZap
     AqompliceQZapToQPin
     AqompliceQPinToLLVM
-    AqompliceQPinToFunc
 
     AqompliceFitTopology
 )

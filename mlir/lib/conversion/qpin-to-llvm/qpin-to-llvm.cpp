@@ -18,48 +18,47 @@ namespace aqomplice {
 namespace qpin {
 namespace {
 
-//===----------------------------------------------------------------------===//
-// Kernel Operations
-//===----------------------------------------------------------------------===//
+//// TODO: RE-ADD RT__INITIALIZE
+// struct KernelOpLowering : mlir::OpConversionPattern<qpin::KernelOp> {
+//   using OpConversionPattern<qpin::KernelOp>::OpConversionPattern;
 
-struct KernelOpLowering : mlir::OpConversionPattern<qpin::KernelOp> {
-  using OpConversionPattern<qpin::KernelOp>::OpConversionPattern;
+//   mlir::LogicalResult
+//   matchAndRewrite(qpin::KernelOp op, OpAdaptor adaptor,
+//                   mlir::ConversionPatternRewriter &rewriter) const final {
+//     auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
+//     if (!moduleOp) {
+//       return mlir::failure();
+//     }
 
-  mlir::LogicalResult
-  matchAndRewrite(qpin::KernelOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
-    if (!moduleOp) {
-      return mlir::failure();
-    }
+//     mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
+//     mlir::Type result = mlir::LLVM::LLVMVoidType::get(op.getContext());
 
-    mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
-    mlir::Type result = mlir::LLVM::LLVMVoidType::get(op.getContext());
+//     const std::string funcName = getQIRFuncString("rt__initialize");
+//     const auto funcOp =
+//     moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName); const auto
+//     funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
 
-    const std::string funcName = getQIRFuncString("rt__initialize");
-    const auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
-    const auto funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
+//     if (!funcOp) {
+//       mlir::OpBuilder::InsertionGuard guard(rewriter);
+//       rewriter.setInsertionPointToStart(moduleOp.getBody());
+//       rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName,
+//       funcType);
+//     }
 
-    if (!funcOp) {
-      mlir::OpBuilder::InsertionGuard guard(rewriter);
-      rewriter.setInsertionPointToStart(moduleOp.getBody());
-      rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName, funcType);
-    }
+//     {
+//       mlir::Block &funcBlock = op.getBody().getBlocks().front();
+//       mlir::OpBuilder::InsertionGuard guard(rewriter);
+//       rewriter.setInsertionPoint(&funcBlock.front());
 
-    {
-      mlir::Block &funcBlock = op.getBody().getBlocks().front();
-      mlir::OpBuilder::InsertionGuard guard(rewriter);
-      rewriter.setInsertionPoint(&funcBlock.front());
+//       mlir::LLVM::ZeroOp nullPtr =
+//           rewriter.create<mlir::LLVM::ZeroOp>(op->getLoc(), param);
+//       rewriter.create<mlir::LLVM::CallOp>(op->getLoc(), funcType, funcName,
+//                                           nullPtr.getRes());
+//     }
 
-      mlir::LLVM::ZeroOp nullPtr =
-          rewriter.create<mlir::LLVM::ZeroOp>(op->getLoc(), param);
-      rewriter.create<mlir::LLVM::CallOp>(op->getLoc(), funcType, funcName,
-                                          nullPtr.getRes());
-    }
-
-    return mlir::success();
-  }
-};
+//     return mlir::success();
+//   }
+// };
 
 //===----------------------------------------------------------------------===//
 // Quantum Register Operations
@@ -132,32 +131,33 @@ protected:
       return mlir::failure();
     }
 
-    const auto voidType = mlir::LLVM::LLVMVoidType::get(op.getContext());
-    const auto param = mlir::LLVM::LLVMPointerType::get(op->getContext());
+    // const auto voidType = mlir::LLVM::LLVMVoidType::get(op.getContext());
+    // const auto param = mlir::LLVM::LLVMPointerType::get(op->getContext());
 
-    std::string funcName;
-    llvm::SmallVector<mlir::Value, 2> args{adaptor.getTarget()};
-    llvm::SmallVector<mlir::Type, 2> params{param};
+    // std::string funcName;
+    // llvm::SmallVector<mlir::Value, 2> args{adaptor.getTarget()};
+    // llvm::SmallVector<mlir::Type, 2> params{param};
 
-    if (auto ctrl = op.getControl()) {
-      funcName = getQIRInsName(opName, "ctl");
-      args.push_back(adaptor.getControl());
-      params.push_back(param);
-    } else {
-      funcName = getQIRInsName(opName, "body");
-    }
+    // if (auto ctrl = op.getControl()) {
+    //   funcName = getQIRInsName(opName, "ctl");
+    //   args.push_back(adaptor.getControl());
+    //   params.push_back(param);
+    // } else {
+    //   funcName = getQIRInsName(opName, "body");
+    // }
 
-    const auto funcType = mlir::LLVM::LLVMFunctionType::get(voidType, params);
-    const auto funcOp =
-        moduleOp.template lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
-    if (!funcOp) {
-      mlir::OpBuilder::InsertionGuard guard(rewriter);
-      rewriter.setInsertionPointToStart(moduleOp.getBody());
-      rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName, funcType);
-    }
+    // const auto funcType = mlir::LLVM::LLVMFunctionType::get(voidType,
+    // params); const auto funcOp =
+    //     moduleOp.template lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
+    // if (!funcOp) {
+    //   mlir::OpBuilder::InsertionGuard guard(rewriter);
+    //   rewriter.setInsertionPointToStart(moduleOp.getBody());
+    //   rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName,
+    //   funcType);
+    // }
 
-    rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, funcType, funcName,
-                                                    args);
+    // rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, funcType, funcName,
+    //                                                 args);
 
     return mlir::success();
   }
@@ -288,29 +288,13 @@ struct QPinToLLVM : impl::QPinToLLVMBase<QPinToLLVM> {
     target.addLegalDialect<mlir::LLVM::LLVMDialect>();
     target.addIllegalDialect<QPinDialect>();
 
-    // A kernel implements the FuncOpInterface. To avoid
-    // reimplementing (or worse, copying) the conversion to
-    // LLVM IR, kernel operations require a conversion to the
-    // mlir::func::FuncDialect (--qpin-to-func).
-    target.addDynamicallyLegalOp<qpin::KernelOp>([](qpin::KernelOp op) {
-      for (auto o : op.getBody().getOps<mlir::LLVM::CallOp>()) {
-        if (o.getCallee() == getQIRFuncString("rt__initialize")) {
-          return true;
-        }
-      }
-      return false;
-    });
-    target.addLegalOp<qpin::ReturnOp>();
-    target.addLegalOp<qpin::CallOp>();
-
     ConversionTypeConverter typeConverter(context);
     mlir::LLVMTypeConverter llvmTypeConverter(context);
 
     mlir::RewritePatternSet patterns(context);
-    patterns.add<KernelOpLowering, QubitOpLowering, MeasureOpLowering,
-                 HOpLowering, XOpLowering, YOpLowering, ZOpLowering,
-                 SOpLowering, TOpLowering, SwapOpLowering>(typeConverter,
-                                                           context);
+    patterns.add<QubitOpLowering, MeasureOpLowering, HOpLowering, XOpLowering,
+                 YOpLowering, ZOpLowering, SOpLowering, TOpLowering,
+                 SwapOpLowering>(typeConverter, context);
 
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns)))) {
