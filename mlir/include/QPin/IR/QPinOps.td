@@ -20,7 +20,7 @@ class QPin_Op<string mnemonic, list<Trait> traits = []>
 // Quantum Register Operations
 //===----------------------------------------------------------------------===//
 
-def QubitOp : QPin_Op<"qubit"> {
+def QubitOp : QPin_Op<"qubit", [InsideQPUKernel]> {
   let summary = "static qubit address";
   let description = [{}];
   let arguments = (ins I32Attr:$index);

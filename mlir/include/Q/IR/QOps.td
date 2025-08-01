@@ -23,7 +23,7 @@ class Q_Op<string mnemonic, list<Trait> traits = []>
 class Memory_Op<string mnemonic, list<Trait> traits = []>
     : Q_Op<mnemonic, traits>;
 
-def AllocOp : Memory_Op<"alloc"> {
+def AllocOp : Memory_Op<"alloc", [InsideQPUKernel]> {
   let summary = "allocate n qubits into a quantum register";
   let description = [{
     Ensures implicitly that all other quantum 
