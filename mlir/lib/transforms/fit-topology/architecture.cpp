@@ -1,5 +1,6 @@
 #include "transforms/fit-topology/architecture.h"
 
+#include "common/interfaces.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Value.h"
 
@@ -121,7 +122,7 @@ void Architecture::localOptimalSwap(mlir::OpBuilder &builder,
     if (auto qubitOp = mlir::dyn_cast<qpin::QubitOp>(op)) {
       indices[qubitOp.getIndex()] = qubitOp.getQubit();
     } else if (auto unitary =
-                   mlir::dyn_cast<qpin::ControlledUnitaryOpInterface>(op)) {
+                   mlir::dyn_cast<ControlledUnitaryOpInterface>(op)) {
       if (!unitary.hasControl()) { // Single Qubit Gates don't require mapping.
         return mlir::WalkResult::advance();
       }

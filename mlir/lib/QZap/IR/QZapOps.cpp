@@ -30,8 +30,8 @@ template <typename UnitaryOp>
 bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
                           const Operation &op) {
   if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
-    bool used = measured.find(u.getTargetIn()) != measured.end();
-    if (auto ctrl = u.getControlIn()) {
+    bool used = measured.find(u.getAIn()) != measured.end();
+    if (auto ctrl = u.getBIn()) {
       used |= measured.find(ctrl) != measured.end();
     }
     return used;
@@ -58,12 +58,12 @@ template <typename UnitaryOp>
 void updateRetrievedButUnstored(llvm::DenseSet<Value> &retrievedButUnstored,
                                 const Operation &op) {
   if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
-    retrievedButUnstored.erase(u.getTargetIn());
-    retrievedButUnstored.erase(u.getTargetOut());
+    retrievedButUnstored.erase(u.getAIn());
+    retrievedButUnstored.erase(u.getAOut());
 
-    if (auto ctrl = u.getControlIn()) {
-      retrievedButUnstored.erase(u.getControlIn());
-      retrievedButUnstored.erase(u.getControlOut());
+    if (auto ctrl = u.getBIn()) {
+      retrievedButUnstored.erase(u.getBIn());
+      retrievedButUnstored.erase(u.getBOut());
     }
   }
 }

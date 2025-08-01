@@ -45,7 +45,25 @@ public:
       : mlir::OpConversionPattern<OpType>(typeConverter, context),
         state_(state) {}
 
+protected:
   LoweringContext &getState() const { return state_; }
+
+  [[nodiscard]] bool
+  hasZeroUses(mlir::Value q, const mlir::Location loc,
+              mlir::ConversionPatternRewriter &rewriter) const {
+    auto &info = getState().qubits[q];
+    if ((--info.uses) == 0) {
+      auto qregIn = getState().qregs[info.qreg];
+      auto store = rewriter.create<qzap::StoreOp>(loc, qregIn.getType(), qregIn,
+                                                  info.index, info.qubit);
+      getState().qregs[info.qreg] = store.getQregOut();
+      getState().qubits.erase(q);
+
+      return true;
+    }
+
+    return false;
+  }
 
 private:
   LoweringContext &state_;
@@ -160,20 +178,11 @@ struct MeasureOpLowering : StatefulOpConversionPattern<q::MeasureOp> {
                   mlir::ConversionPatternRewriter &rewriter) const final {
     LoweringContext::QubitInfo &info = getState().qubits[op.getQubit()];
 
-    mlir::Value qubitIn = info.qubit;
     qzap::MeasureOp m = rewriter.replaceOpWithNewOp<qzap::MeasureOp>(
-        op, op.getBit().getType(), qubitIn.getType(), qubitIn);
+        op, op.getBit().getType(), info.qubit.getType(), info.qubit);
 
-    if ((--info.uses) == 0) {
-      auto qregIn = getState().qregs[info.qreg];
-      auto store = rewriter.create<qzap::StoreOp>(
-          op->getLoc(), qregIn.getType(), qregIn, info.index, m.getQubitOut());
-
-      getState().qregs[info.qreg] = store.getQregOut();
-      getState().qubits.erase(op.getQubit());
-    } else {
-      info.qubit = m.getQubitOut();
-    }
+    info.qubit = m.getQubitOut();
+    std::ignore = hasZeroUses(op.getQubit(), op.getLoc(), rewriter);
 
     return mlir::success();
   }
@@ -184,8 +193,7 @@ struct MeasureOpLowering : StatefulOpConversionPattern<q::MeasureOp> {
 //===----------------------------------------------------------------------===//
 
 template <typename SourceOp, typename DestOp>
-class OptionallyControlledUnitaryOpLowering
-    : public StatefulOpConversionPattern<SourceOp> {
+class UnitaryOpLowering : public StatefulOpConversionPattern<SourceOp> {
 public:
   using StatefulOpConversionPattern<SourceOp>::StatefulOpConversionPattern;
 
@@ -199,113 +207,44 @@ private:
   mlir::LogicalResult
   matchAndRewriteImpl(SourceOp op, typename SourceOp::Adaptor adaptor,
                       mlir::ConversionPatternRewriter &rewriter) const {
-    LoweringContext::QubitInfo &target =
-        this->getState().qubits[op.getTarget()];
-    mlir::Value targetIn = target.qubit;
 
-    if (op.getControl()) {
-      LoweringContext::QubitInfo &control =
-          this->getState().qubits[op.getControl()];
-      mlir::Value controlIn = control.qubit;
-
+    auto ctrld =
+        mlir::dyn_cast<ControlledUnitaryOpInterface>(op.getOperation());
+    if (ctrld && !ctrld.hasControl()) {
+      LoweringContext::QubitInfo &a = this->getState().qubits[op.getA()];
       auto u =
-          rewriter.create<DestOp>(op->getLoc(), targetIn.getType(),
-                                  controlIn.getType(), targetIn, controlIn);
-      target.qubit = u.getTargetOut();
-      control.qubit = u.getControlOut();
-
-      if ((--control.uses) == 0) {
-        auto qregIn = this->getState().qregs[control.qreg];
-        auto store = rewriter.create<qzap::StoreOp>(
-            op->getLoc(), qregIn.getType(), qregIn, control.index,
-            control.qubit);
-        this->getState().qregs[control.qreg] = store.getQregOut();
-        this->getState().qubits.erase(op.getControl());
-      }
-    } else {
-      auto u =
-          rewriter.create<DestOp>(op->getLoc(), targetIn.getType(), targetIn);
-      target.qubit = u.getTargetOut();
+          rewriter.create<DestOp>(op->getLoc(), a.qubit.getType(), a.qubit);
+      a.qubit = u.getAOut();
+      std::ignore = this->hasZeroUses(op.getA(), op->getLoc(), rewriter);
+      rewriter.eraseOp(op);
+      return mlir::success();
     }
 
-    if ((--target.uses) == 0) {
-      auto qregIn = this->getState().qregs[target.qreg];
-      auto store = rewriter.create<qzap::StoreOp>(
-          op->getLoc(), qregIn.getType(), qregIn, target.index, target.qubit);
-
-      this->getState().qregs[target.qreg] = store.getQregOut();
-      this->getState().qubits.erase(op.getTarget());
-    }
-
+    LoweringContext::QubitInfo &a = this->getState().qubits[op.getA()];
+    LoweringContext::QubitInfo &b = this->getState().qubits[op.getB()];
+    auto u = rewriter.create<DestOp>(op->getLoc(), a.qubit.getType(),
+                                     b.qubit.getType(), a.qubit, b.qubit);
+    a.qubit = u.getAOut();
+    b.qubit = u.getBOut();
+    std::ignore = this->hasZeroUses(op.getA(), op->getLoc(), rewriter);
+    std::ignore = this->hasZeroUses(op.getB(), op->getLoc(), rewriter);
     rewriter.eraseOp(op);
     return mlir::success();
   }
 };
 
-struct HOpLowering : OptionallyControlledUnitaryOpLowering<q::HOp, qzap::HOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      q::HOp, qzap::HOp>::OptionallyControlledUnitaryOpLowering;
-};
+#define DEFINE_UNITARY_OP_LOWERING(OP)                                         \
+  struct OP##Lowering : UnitaryOpLowering<q::OP, qzap::OP> {                   \
+    using UnitaryOpLowering<q::OP, qzap::OP>::UnitaryOpLowering;               \
+  };
 
-struct XOpLowering : OptionallyControlledUnitaryOpLowering<q::XOp, qzap::XOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      q::XOp, qzap::XOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct YOpLowering : OptionallyControlledUnitaryOpLowering<q::YOp, qzap::YOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      q::YOp, qzap::YOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct ZOpLowering : OptionallyControlledUnitaryOpLowering<q::ZOp, qzap::ZOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      q::ZOp, qzap::ZOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct SOpLowering : OptionallyControlledUnitaryOpLowering<q::SOp, qzap::SOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      q::SOp, qzap::SOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct TOpLowering : OptionallyControlledUnitaryOpLowering<q::TOp, qzap::TOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      q::TOp, qzap::TOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct SwapOpLowering : StatefulOpConversionPattern<q::SwapOp> {
-  using StatefulOpConversionPattern<q::SwapOp>::StatefulOpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(q::SwapOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    LoweringContext::QubitInfo &a = getState().qubits[op.getA()];
-    LoweringContext::QubitInfo &b = getState().qubits[op.getB()];
-
-    auto swap = rewriter.create<qzap::SwapOp>(
-        op->getLoc(), a.qubit.getType(), b.qubit.getType(), a.qubit, b.qubit);
-    a.qubit = swap.getAOut();
-    b.qubit = swap.getBOut();
-
-    if ((--a.uses) == 0) {
-      auto qregIn = getState().qregs[a.qreg];
-      auto store = rewriter.create<qzap::StoreOp>(
-          op->getLoc(), qregIn.getType(), qregIn, a.index, a.qubit);
-      getState().qregs[a.qreg] = store.getQregOut();
-      getState().qubits.erase(op.getA());
-    }
-
-    if ((--b.uses) == 0) {
-      auto qregIn = getState().qregs[b.qreg];
-      auto store = rewriter.create<qzap::StoreOp>(
-          op->getLoc(), qregIn.getType(), qregIn, b.index, b.qubit);
-      getState().qregs[b.qreg] = store.getQregOut();
-      getState().qubits.erase(op.getB());
-    }
-
-    rewriter.eraseOp(op);
-    return mlir::success();
-  }
-};
+DEFINE_UNITARY_OP_LOWERING(HOp)
+DEFINE_UNITARY_OP_LOWERING(XOp)
+DEFINE_UNITARY_OP_LOWERING(YOp)
+DEFINE_UNITARY_OP_LOWERING(ZOp)
+DEFINE_UNITARY_OP_LOWERING(SOp)
+DEFINE_UNITARY_OP_LOWERING(TOp)
+DEFINE_UNITARY_OP_LOWERING(SwapOp)
 
 //===----------------------------------------------------------------------===//
 // Type Converter

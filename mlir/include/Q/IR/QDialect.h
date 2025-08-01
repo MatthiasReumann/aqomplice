@@ -33,7 +33,8 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"  // IWYU pragma: keep
 #include "mlir/Interfaces/SideEffectInterfaces.h"  // IWYU pragma: keep
 
-#include "common/traits.h" // IWYU pragma: keep
+#include "common/interfaces.h" // IWYU pragma: keep
+#include "common/traits.h"     // IWYU pragma: keep
 
 #define GET_OP_CLASSES
 #include "Q/IR/QOps.h.inc"

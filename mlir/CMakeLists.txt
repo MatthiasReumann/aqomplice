@@ -22,6 +22,9 @@ include_directories(${PROJECT_BINARY_DIR}/mlir/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
+# Common
+add_subdirectory(include/common)
+
 # Q Dialect
 add_subdirectory(include/Q/IR)
 add_subdirectory(lib/Q/IR)

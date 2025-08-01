@@ -8,6 +8,7 @@ include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
 
 include "common/traits.td"
+include "common/interfaces.td"
 
 include "QZap/IR/QZapDialect.td"
 include "QZap/IR/QZapTypes.td"
@@ -127,50 +128,47 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]> {}
-
-class OptionallyControlledUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits> {
-  let arguments = (ins QubitType:$target_in, Optional<QubitType>:$control_in);
-  let results = (outs QubitType:$target_out, Optional<QubitType>:$control_out);
-  let assemblyFormat = " attr-dict $target_in ( `ctrl` $control_in^ )? `:` functional-type(operands, results) ";
+  : Gate_Op<mnemonic, traits#[Unitary]> {
+  let arguments = (ins QubitType:$a_in, Optional<QubitType>:$b_in);
+  let results = (outs QubitType:$a_out, Optional<QubitType>:$b_out);
 }
 
-def HOp : OptionallyControlledUnitary_Op<"h", [Hermitian]> {
-  let summary = "apply H operation to target qubit";
-  let description = [{}];
+class CUnitary_Op<string mnemonic, list<Trait> traits = []> 
+  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
+  let extraClassDeclaration = [{
+        mlir::Value getTarget() { return getAIn(); }
+        mlir::Value getControl() { return getBIn(); }
+        bool hasControl() { return getBIn() != nullptr; }
+  }];
+  let assemblyFormat = " attr-dict $a_in ( `ctrl` $b_in^ )? `:` functional-type(operands, results) ";
 }
 
-def XOp : OptionallyControlledUnitary_Op<"x", [Hermitian]> {
-  let summary = "apply X operation to target qubit";
-  let description = [{}];
+def HOp : CUnitary_Op<"h", [Hermitian]> {
+  let summary = "apply H operation";
 }
 
-def YOp : OptionallyControlledUnitary_Op<"y", [Hermitian]> {
-  let summary = "apply Y operation to target qubit";
-  let description = [{}];
+def XOp : CUnitary_Op<"x", [Hermitian]> {
+  let summary = "apply X operation";
 }
 
-def ZOp : OptionallyControlledUnitary_Op<"z", [Hermitian]> {
-  let summary = "apply Z operation to target qubit";
-  let description = [{}];
+def YOp : CUnitary_Op<"y", [Hermitian]> {
+  let summary = "apply Y operation";
 }
 
-def SOp : OptionallyControlledUnitary_Op<"s"> {
-  let summary = "apply S operation to target qubit";
-  let description = [{}];
+def ZOp : CUnitary_Op<"z", [Hermitian]> {
+  let summary = "apply Z operation";
 }
 
-def TOp : OptionallyControlledUnitary_Op<"t"> {
-  let summary = "apply T operation to target qubit";
-  let description = [{}];
+def SOp : CUnitary_Op<"s"> {
+  let summary = "apply S operation";
+}
+
+def TOp : CUnitary_Op<"t"> {
+  let summary = "apply T operation";
 }
 
 def SwapOp : Unitary_Op<"swap", [Hermitian]> {
-  let summary = "apply swap operation to qubits a and b";
-  let description = [{}];
-  let arguments = (ins QubitType:$a_in, QubitType:$b_in);
-  let results = (outs QubitType:$a_out, Optional<QubitType>:$b_out);
+  let summary = "apply SWAP operation";
   let assemblyFormat = " attr-dict $a_in `,` $b_in `:` functional-type(operands, results) ";
 }
 

@@ -177,8 +177,7 @@ struct MeasureOpLowering : StatefulOpConversionPattern<qzap::MeasureOp> {
 
 namespace {
 template <typename SourceOp, class DestOp>
-class OptionallyControlledUnitaryOpLowering
-    : public StatefulOpConversionPattern<SourceOp> {
+class UnitaryOpLowering : public StatefulOpConversionPattern<SourceOp> {
 public:
   using StatefulOpConversionPattern<SourceOp>::StatefulOpConversionPattern;
 
@@ -192,21 +191,30 @@ private:
   mlir::LogicalResult
   matchAndRewriteImpl(SourceOp op, typename SourceOp::Adaptor adaptor,
                       mlir::ConversionPatternRewriter &rewriter) const {
-    mlir::Value targetIndex = this->getState().qubits[op.getTargetIn()];
+    auto ctrld =
+        mlir::dyn_cast<ControlledUnitaryOpInterface>(op.getOperation());
+    if (ctrld && !ctrld.hasControl()) {
+      mlir::Value aIndex = this->getState().qubits[op.getAIn()];
 
-    if (op.getControlIn()) {
-      mlir::Value controlIndex = this->getState().qubits[op.getControlIn()];
+      rewriter.create<DestOp>(op->getLoc(), aIndex, nullptr);
 
-      rewriter.create<DestOp>(op->getLoc(), targetIndex, controlIndex);
+      this->getState().qubits.erase(op.getAIn());
+      this->getState().qubits[op.getAOut()] = aIndex;
 
-      this->getState().qubits.erase(op.getControlIn());
-      this->getState().qubits[op.getControlOut()] = controlIndex;
-    } else {
-      rewriter.create<DestOp>(op->getLoc(), targetIndex, nullptr);
+      rewriter.eraseOp(op);
+      return mlir::success();
     }
 
-    this->getState().qubits.erase(op.getTargetIn());
-    this->getState().qubits[op.getTargetOut()] = targetIndex;
+    mlir::Value aIndex = this->getState().qubits[op.getAIn()];
+    mlir::Value bIndex = this->getState().qubits[op.getBIn()];
+
+    rewriter.create<DestOp>(op->getLoc(), aIndex, bIndex);
+
+    this->getState().qubits.erase(op.getAIn());
+    this->getState().qubits[op.getAOut()] = aIndex;
+
+    this->getState().qubits.erase(op.getBIn());
+    this->getState().qubits[op.getBOut()] = bIndex;
 
     rewriter.eraseOp(op);
     return mlir::success();
@@ -214,63 +222,18 @@ private:
 };
 } // namespace
 
-struct HOpLowering
-    : OptionallyControlledUnitaryOpLowering<qzap::HOp, qpin::HOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qzap::HOp, qpin::HOp>::OptionallyControlledUnitaryOpLowering;
-};
+#define DEFINE_UNITARY_OP_LOWERING(OP)                                         \
+  struct OP##Lowering : UnitaryOpLowering<qzap::OP, qpin::OP> {                \
+    using UnitaryOpLowering<qzap::OP, qpin::OP>::UnitaryOpLowering;            \
+  };
 
-struct XOpLowering
-    : OptionallyControlledUnitaryOpLowering<qzap::XOp, qpin::XOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qzap::XOp, qpin::XOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct YOpLowering
-    : OptionallyControlledUnitaryOpLowering<qzap::YOp, qpin::YOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qzap::YOp, qpin::YOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct ZOpLowering
-    : OptionallyControlledUnitaryOpLowering<qzap::ZOp, qpin::ZOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qzap::ZOp, qpin::ZOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct SOpLowering
-    : OptionallyControlledUnitaryOpLowering<qzap::SOp, qpin::SOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qzap::SOp, qpin::SOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct TOpLowering
-    : OptionallyControlledUnitaryOpLowering<qzap::TOp, qpin::TOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qzap::TOp, qpin::TOp>::OptionallyControlledUnitaryOpLowering;
-};
-
-struct SwapOpLowering : StatefulOpConversionPattern<qzap::SwapOp> {
-  using StatefulOpConversionPattern<qzap::SwapOp>::StatefulOpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(qzap::SwapOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Value aIndex = getState().qubits[op.getAIn()];
-    mlir::Value bIndex = getState().qubits[op.getBIn()];
-
-    rewriter.create<qpin::SwapOp>(op->getLoc(), aIndex, bIndex);
-
-    getState().qubits.erase(op.getAIn());
-    getState().qubits[op.getAOut()] = aIndex;
-
-    getState().qubits.erase(op.getBIn());
-    getState().qubits[op.getBOut()] = bIndex;
-
-    rewriter.eraseOp(op);
-    return mlir::success();
-  }
-};
+DEFINE_UNITARY_OP_LOWERING(HOp)
+DEFINE_UNITARY_OP_LOWERING(XOp)
+DEFINE_UNITARY_OP_LOWERING(YOp)
+DEFINE_UNITARY_OP_LOWERING(ZOp)
+DEFINE_UNITARY_OP_LOWERING(SOp)
+DEFINE_UNITARY_OP_LOWERING(TOp)
+DEFINE_UNITARY_OP_LOWERING(SwapOp)
 
 struct ConversionTypeConverter : mlir::TypeConverter {
   ConversionTypeConverter(mlir::MLIRContext *ctx) {

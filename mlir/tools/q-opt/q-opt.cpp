@@ -23,6 +23,8 @@
 #include "QZap/IR/QZapDialect.h"
 #include <string>
 
+#include "common/CommonInterfaces.cpp.inc" // adds interface methods
+
 namespace {
 struct FullLoweringOptions
     : mlir::PassPipelineOptions<aqomplice::FitTopologyOptions> {
@@ -38,6 +40,8 @@ void fullLoweringPipelineBuilder(mlir::OpPassManager &pm,
       aqomplice::FitTopologyOptions{options.arch}));
 
   pm.addPass(mlir::createArithToLLVMConversionPass());
+  pm.addPass(mlir::createConvertSCFToCFPass());
+  pm.addPass(mlir::createConvertControlFlowToLLVMPass());
   pm.addPass(mlir::createConvertIndexToLLVMPass());
   pm.addPass(aqomplice::createQPinToLLVM());
   pm.addPass(aqomplice::createQPinToFunc());

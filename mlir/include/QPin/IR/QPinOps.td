@@ -8,6 +8,7 @@ include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
 
 include "common/traits.td"
+include "common/interfaces.td"
 
 include "QPin/IR/QPinDialect.td"
 include "QPin/IR/QPinTypes.td"
@@ -98,77 +99,47 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : QPin_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]>;
-
-def ControlledUnitaryOpInterface : OpInterface<"ControlledUnitaryOpInterface"> {
-  let description = [{}];
-  let methods = [
-    InterfaceMethod<
-      "Return the target qubit.", 
-      "mlir::Value", "getTarget"
-    >,
-    InterfaceMethod<
-      "Returns the control qubit.", 
-      "mlir::Value", "getControl"
-    >,
-    InterfaceMethod<
-      "Returns true if the op has a control qubit.", 
-      "bool", "hasControl"
-    >
-  ];
-  let cppNamespace = "::aqomplice::qpin";
-}
-
-class OptionallyControlledUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
-  let arguments = (ins StaticQubitType:$target, Optional<StaticQubitType>:$control);
+  : Gate_Op<mnemonic, traits#[Unitary]> {
+  let arguments = (ins StaticQubitType:$a, Optional<StaticQubitType>:$b);
   let results = (outs);
-  let assemblyFormat = " attr-dict $target ( `ctrl` $control^ )?";
-  
-  // Add UnitaryOpInterface methods
-  let extraClassDeclaration = [{
-    bool hasControl() { 
-      if (auto ctrl = getControl()) { return true; }
-      return false; 
-    }
+}
+
+class CUnitary_Op<string mnemonic, list<Trait> traits = []> 
+  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
+   let extraClassDeclaration = [{
+        mlir::Value getTarget() { return getA(); }
+        mlir::Value getControl() { return getB(); }
+        bool hasControl() { return getB() != nullptr; }
   }];
+  let assemblyFormat = " attr-dict $a ( `ctrl` $b^ )?";
 }
 
-def HOp : OptionallyControlledUnitary_Op<"h", [Hermitian]> {
-  let summary = "apply H operation to target qubit";
-  let description = [{}];
+def HOp : CUnitary_Op<"h", [Hermitian]> {
+  let summary = "apply H operation";
 }
 
-def XOp : OptionallyControlledUnitary_Op<"x", [Hermitian]> {
-  let summary = "apply X operation to target qubit";
-  let description = [{}];
+def XOp : CUnitary_Op<"x", [Hermitian]> {
+  let summary = "apply X operation";
 }
 
-def YOp : OptionallyControlledUnitary_Op<"y", [Hermitian]> {
-  let summary = "apply Y operation to target qubit";
-  let description = [{}];
+def YOp : CUnitary_Op<"y", [Hermitian]> {
+  let summary = "apply Y operation";
 }
 
-def ZOp : OptionallyControlledUnitary_Op<"z", [Hermitian]> {
-  let summary = "apply Z operation to target qubit";
-  let description = [{}];
+def ZOp : CUnitary_Op<"z", [Hermitian]> {
+  let summary = "apply Z operation";
 }
 
-def SOp : OptionallyControlledUnitary_Op<"s"> {
-  let summary = "apply S operation to target qubit";
-  let description = [{}];
+def SOp : CUnitary_Op<"s"> {
+  let summary = "apply S operation";
 }
 
-def TOp : OptionallyControlledUnitary_Op<"t"> {
-  let summary = "apply T operation to target qubit";
-  let description = [{}];
+def TOp : CUnitary_Op<"t"> {
+  let summary = "apply T operation";
 }
 
 def SwapOp : Unitary_Op<"swap", [Hermitian]> {
-  let summary = "apply swap operation to qubits a and b";
-  let description = [{}];
-  let arguments = (ins StaticQubitType:$a, StaticQubitType:$b);
-  let results = (outs);
+  let summary = "apply swap operation";
   let assemblyFormat = " attr-dict $a `,` $b";
 }
 
