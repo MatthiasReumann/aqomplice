@@ -26,29 +26,19 @@
 #include "common/CommonInterfaces.cpp.inc" // adds interface methods
 
 namespace {
-struct FullLoweringOptions
+
+struct ZapToPinWithRoutingOptions
     : mlir::PassPipelineOptions<aqomplice::FitTopologyOptions> {
   Option<std::string> arch{*this, "arch",
                            llvm::cl::desc("The name of the architecture.")};
 };
 
-void fullLoweringPipelineBuilder(mlir::OpPassManager &pm,
-                                 const FullLoweringOptions &options) {
-  pm.addPass(aqomplice::createQToQZap());
+void zapToPinWithRoutingBuilder(mlir::OpPassManager &pm,
+                                const ZapToPinWithRoutingOptions &options) {
   pm.addPass(aqomplice::createQZapToQPin());
   pm.addPass(aqomplice::createFitTopology(
       aqomplice::FitTopologyOptions{options.arch}));
-
-  pm.addPass(mlir::createArithToLLVMConversionPass());
-  pm.addPass(mlir::createConvertSCFToCFPass());
-  pm.addPass(mlir::createConvertControlFlowToLLVMPass());
-  pm.addPass(mlir::createConvertIndexToLLVMPass());
-  pm.addPass(aqomplice::createQPinToLLVM());
-  pm.addPass(aqomplice::createQPinToFunc());
-  pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
-  pm.addPass(mlir::createConvertFuncToLLVMPass());
-
-  pm.addPass(mlir::createCanonicalizerPass());
+  pm.addPass(mlir::createRemoveDeadValuesPass());
 }
 }; // namespace
 
@@ -64,8 +54,10 @@ int main(int argc, char **argv) {
                   mlir::index::IndexDialect, mlir::scf::SCFDialect,
                   mlir::LLVM::LLVMDialect>();
 
-  mlir::PassPipelineRegistration<FullLoweringOptions>(
-      "full-lowering", "Lower from Q to LLVM IR.", fullLoweringPipelineBuilder);
+  mlir::PassPipelineRegistration<ZapToPinWithRoutingOptions>(
+      "qzap-to-qpin-with-routing",
+      "Lower QZap to QPin and route kernels based on the given architecture.",
+      zapToPinWithRoutingBuilder);
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
