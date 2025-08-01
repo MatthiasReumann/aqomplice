@@ -29,7 +29,7 @@ using namespace mlir;
 template <typename UnitaryOp>
 bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
                           const Operation &op) {
-  if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
+  if (auto u = dyn_cast<UnitaryOp>(op)) {
     bool used = measured.find(u.getTarget()) != measured.end();
     if (auto ctrl = u.getControl()) {
       used |= measured.find(ctrl) != measured.end();
@@ -47,7 +47,7 @@ bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
 template <>
 bool usedAfterMeasurement<qpin::SwapOp>(const llvm::DenseSet<Value> &measured,
                                         const Operation &op) {
-  if (auto u = mlir::dyn_cast<qpin::SwapOp>(op)) {
+  if (auto u = dyn_cast<qpin::SwapOp>(op)) {
     return measured.find(u.getA()) != measured.end() &&
            measured.find(u.getB()) != measured.end();
   }
@@ -76,7 +76,7 @@ llvm::LogicalResult KernelOp::verifyRegions() {
       continue;
     }
 
-    if (auto measureOp = mlir::dyn_cast<qpin::MeasureOp>(op)) {
+    if (auto measureOp = dyn_cast<qpin::MeasureOp>(op)) {
       measured.insert(measureOp.getQubit());
 
     } else { // Gate operations
@@ -93,7 +93,7 @@ llvm::LogicalResult KernelOp::verifyRegions() {
     }
   }
 
-  return mlir::success();
+  return success();
 }
 
 void KernelOp::build(OpBuilder &builder, OperationState &state,
@@ -124,6 +124,29 @@ void KernelOp::print(OpAsmPrinter &p) {
   function_interface_impl::printFunctionOp(
       p, *this, false, getFunctionTypeAttrName(), getArgAttrsAttrName(),
       getResAttrsAttrName());
+}
+
+/**
+ * @brief Verify that the number and types match the kernel signature.
+ */
+LogicalResult ReturnOp::verify() {
+  auto kernel = cast<KernelOp>((*this)->getParentOp());
+
+  const auto &results = kernel.getFunctionType().getResults();
+  if (getNumOperands() != results.size())
+    return emitOpError("has ")
+           << getNumOperands() << " operands, but enclosing function (@"
+           << kernel.getName() << ") returns " << results.size();
+
+  for (unsigned i = 0, e = results.size(); i != e; ++i)
+    if (getOperand(i).getType() != results[i])
+      return emitError() << "type of return operand " << i << " ("
+                         << getOperand(i).getType()
+                         << ") doesn't match function result type ("
+                         << results[i] << ")"
+                         << " in kernel @" << kernel.getName();
+
+  return success();
 }
 
 /**

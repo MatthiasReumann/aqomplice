@@ -143,6 +143,30 @@ void KernelOp::print(OpAsmPrinter &p) {
 }
 
 /**
+ * @brief Verify that the number and types match the kernel signature.
+ */
+LogicalResult ReturnOp::verify() {
+  auto kernel = cast<KernelOp>((*this)->getParentOp());
+
+  // The operand number and types must match the function signature.
+  const auto &results = kernel.getFunctionType().getResults();
+  if (getNumOperands() != results.size())
+    return emitOpError("has ")
+           << getNumOperands() << " operands, but enclosing function (@"
+           << kernel.getName() << ") returns " << results.size();
+
+  for (unsigned i = 0, e = results.size(); i != e; ++i)
+    if (getOperand(i).getType() != results[i])
+      return emitError() << "type of return operand " << i << " ("
+                         << getOperand(i).getType()
+                         << ") doesn't match function result type ("
+                         << results[i] << ")"
+                         << " in kernel @" << kernel.getName();
+
+  return success();
+}
+
+/**
  * @brief Return the callee of the generic call operation.
  * @note This is required by the call interface.
  */

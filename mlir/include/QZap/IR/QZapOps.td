@@ -48,6 +48,7 @@ def ReturnOp : QZap_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, Retur
   let description = [{}];
   let arguments = (ins Variadic<AnyType>:$operands);
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
+  let hasVerifier = 1;
 }
 
 def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
