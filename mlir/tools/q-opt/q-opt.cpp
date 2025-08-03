@@ -39,6 +39,22 @@ void zapToPinWithRoutingBuilder(mlir::OpPassManager &pm,
       aqomplice::FitTopologyOptions{options.arch}));
   pm.addPass(mlir::createRemoveDeadValuesPass());
 }
+
+void pinToLLVMBuilder(mlir::OpPassManager &pm) {
+  pm.addPass(aqomplice::createQPinToLLVM()); // Quantum Kernels.
+
+  pm.addPass(mlir::createConvertSCFToCFPass()); // Control Flow Elements.
+  pm.addPass(mlir::createConvertControlFlowToLLVMPass());
+
+  pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass()); // MemRefs.
+
+  pm.addPass(mlir::createArithToLLVMConversionPass()); // Indices.
+  pm.addPass(mlir::createConvertIndexToLLVMPass());
+  pm.addPass(mlir::createConvertFuncToLLVMPass()); // Funcs.
+
+  pm.addPass(mlir::createCSEPass());
+  pm.addPass(mlir::createCanonicalizerPass());
+}
 }; // namespace
 
 int main(int argc, char **argv) {
@@ -57,6 +73,10 @@ int main(int argc, char **argv) {
       "qzap-to-qpin-with-routing",
       "Lower QZap to QPin and route kernels based on the given architecture.",
       zapToPinWithRoutingBuilder);
+
+  mlir::PassPipelineRegistration<>("convert-qpin-to-llvm",
+                                   "Lower all operations to LLVM IR.",
+                                   pinToLLVMBuilder);
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
