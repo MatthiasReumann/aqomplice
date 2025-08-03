@@ -18,47 +18,21 @@ namespace aqomplice {
 namespace qpin {
 namespace {
 
-//// TODO: RE-ADD RT__INITIALIZE
-// struct KernelOpLowering : mlir::OpConversionPattern<qpin::KernelOp> {
-//   using OpConversionPattern<qpin::KernelOp>::OpConversionPattern;
+bool addFuncDecl(std::string name, mlir::LLVM::LLVMFunctionType signature,
+                 mlir::Operation *op,
+                 mlir::ConversionPatternRewriter &rewriter) {
+  mlir::ModuleOp module = op->getParentOfType<mlir::ModuleOp>();
+  assert(module && "Expecting module");
 
-//   mlir::LogicalResult
-//   matchAndRewrite(qpin::KernelOp op, OpAdaptor adaptor,
-//                   mlir::ConversionPatternRewriter &rewriter) const final {
-//     auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
-//     if (!moduleOp) {
-//       return mlir::failure();
-//     }
+  if (!module.lookupSymbol<mlir::LLVM::LLVMFuncOp>(name)) {
+    mlir::OpBuilder::InsertionGuard guard(rewriter);
+    rewriter.setInsertionPointToStart(module.getBody());
+    rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), name, signature);
+    return true;
+  }
 
-//     mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
-//     mlir::Type result = mlir::LLVM::LLVMVoidType::get(op.getContext());
-
-//     const std::string funcName = getQIRFuncString("rt__initialize");
-//     const auto funcOp =
-//     moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName); const auto
-//     funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
-
-//     if (!funcOp) {
-//       mlir::OpBuilder::InsertionGuard guard(rewriter);
-//       rewriter.setInsertionPointToStart(moduleOp.getBody());
-//       rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName,
-//       funcType);
-//     }
-
-//     {
-//       mlir::Block &funcBlock = op.getBody().getBlocks().front();
-//       mlir::OpBuilder::InsertionGuard guard(rewriter);
-//       rewriter.setInsertionPoint(&funcBlock.front());
-
-//       mlir::LLVM::ZeroOp nullPtr =
-//           rewriter.create<mlir::LLVM::ZeroOp>(op->getLoc(), param);
-//       rewriter.create<mlir::LLVM::CallOp>(op->getLoc(), funcType, funcName,
-//                                           nullPtr.getRes());
-//     }
-
-//     return mlir::success();
-//   }
-// };
+  return false;
+}
 
 //===----------------------------------------------------------------------===//
 // Quantum Register Operations
@@ -70,11 +44,27 @@ struct QubitOpLowering : mlir::OpConversionPattern<qpin::QubitOp> {
   mlir::LogicalResult
   matchAndRewrite(qpin::QubitOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Type ptrType = mlir::LLVM::LLVMPointerType::get(op->getContext());
+    // Since no other quantum operation can be executed without an invocation
+    // of qpin.qubit, we insert QIR's __quantum__rt__initialize function here,
+    // if necessary.
+    mlir::Type ptrT = mlir::LLVM::LLVMPointerType::get(op->getContext());
+    mlir::Type resT = mlir::LLVM::LLVMVoidType::get(op.getContext());
+    auto signature = mlir::LLVM::LLVMFunctionType::get(resT, ptrT);
+    std::string initF = getQIRFuncString("rt__initialize");
+
+    if (addFuncDecl(initF, signature, op, rewriter)) {
+      mlir::OpBuilder::InsertionGuard guard(rewriter);
+      rewriter.setInsertionPointToStart(op->getBlock());
+      auto zero = rewriter.create<mlir::LLVM::ZeroOp>(op->getLoc(), ptrT);
+      rewriter.create<mlir::LLVM::CallOp>(op->getLoc(), signature, initF,
+                                          zero.getRes());
+    }
+
+    // Replace qubit operation with static device pointer.
     mlir::Value index = rewriter.create<mlir::LLVM::ConstantOp>(
         op.getLoc(), rewriter.getI32Type(),
         rewriter.getI32IntegerAttr(op.getIndex()));
-    rewriter.replaceOpWithNewOp<mlir::LLVM::IntToPtrOp>(op, ptrType, index);
+    rewriter.replaceOpWithNewOp<mlir::LLVM::IntToPtrOp>(op, ptrT, index);
     return mlir::success();
   }
 };
@@ -89,24 +79,12 @@ struct MeasureOpLowering : mlir::OpConversionPattern<qpin::MeasureOp> {
   mlir::LogicalResult
   matchAndRewrite(qpin::MeasureOp op, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const final {
-    auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
-    if (!moduleOp) {
-      return mlir::failure();
-    }
-
-    mlir::Type result = op.getBit().getType();
-    mlir::Type param = mlir::LLVM::LLVMPointerType::get(op->getContext());
-
-    const std::string funcName = getQIRInsName("mz", "body");
-    const auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
-    const auto funcType = mlir::LLVM::LLVMFunctionType::get(result, param);
-    if (!funcOp) {
-      mlir::OpBuilder::InsertionGuard guard(rewriter);
-      rewriter.setInsertionPointToStart(moduleOp.getBody());
-      rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName, funcType);
-    }
-
-    rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, funcType, funcName,
+    mlir::Type ptrT = mlir::LLVM::LLVMPointerType::get(op->getContext());
+    mlir::Type resT = op.getBit().getType();
+    auto signature = mlir::LLVM::LLVMFunctionType::get(resT, ptrT);
+    std::string mzF = getQIRInsName("mz", "body");
+    addFuncDecl(mzF, signature, op, rewriter);
+    rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, signature, mzF,
                                                     adaptor.getQubit());
     return mlir::success();
   }
@@ -117,152 +95,68 @@ struct MeasureOpLowering : mlir::OpConversionPattern<qpin::MeasureOp> {
 //===----------------------------------------------------------------------===//
 
 template <typename OpType>
-struct OptionallyControlledUnitaryOpLowering
-    : mlir::OpConversionPattern<OpType> {
+struct UnitaryOpLowering : mlir::OpConversionPattern<OpType> {
   using mlir::OpConversionPattern<OpType>::OpConversionPattern;
 
 protected:
   mlir::LogicalResult
   matchAndRewriteImpl(OpType op, typename OpType::Adaptor adaptor,
                       mlir::ConversionPatternRewriter &rewriter,
-                      const std::string &opName) const {
-    auto moduleOp = op->template getParentOfType<mlir::ModuleOp>();
-    if (!moduleOp) {
-      return mlir::failure();
+                      const std::string &gateName) const {
+    mlir::Type voidT = mlir::LLVM::LLVMVoidType::get(op->getContext());
+    mlir::Type ptrT = mlir::LLVM::LLVMPointerType::get(op->getContext());
+
+    // Try to handle controlled unitary ops via interface
+    if (auto cu =
+            mlir::dyn_cast<ControlledUnitaryOpInterface>(op.getOperation())) {
+      llvm::SmallVector<mlir::Type, 2> params;
+      llvm::SmallVector<mlir::Value, 2> args;
+      std::string gateF;
+      if (cu.hasControl()) {
+        params = {ptrT, ptrT};
+        args = {adaptor.getA(), adaptor.getB()};
+        gateF = getQIRInsName(gateName, "ctl");
+      } else {
+        params = {ptrT};
+        args = {adaptor.getA()};
+        gateF = getQIRInsName(gateName, "body");
+      }
+      auto signature = mlir::LLVM::LLVMFunctionType::get(voidT, params);
+      addFuncDecl(gateF, signature, op, rewriter);
+      rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, signature, gateF,
+                                                      args);
+      return mlir::success();
     }
 
-    // const auto voidType = mlir::LLVM::LLVMVoidType::get(op.getContext());
-    // const auto param = mlir::LLVM::LLVMPointerType::get(op->getContext());
-
-    // std::string funcName;
-    // llvm::SmallVector<mlir::Value, 2> args{adaptor.getTarget()};
-    // llvm::SmallVector<mlir::Type, 2> params{param};
-
-    // if (auto ctrl = op.getControl()) {
-    //   funcName = getQIRInsName(opName, "ctl");
-    //   args.push_back(adaptor.getControl());
-    //   params.push_back(param);
-    // } else {
-    //   funcName = getQIRInsName(opName, "body");
-    // }
-
-    // const auto funcType = mlir::LLVM::LLVMFunctionType::get(voidType,
-    // params); const auto funcOp =
-    //     moduleOp.template lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
-    // if (!funcOp) {
-    //   mlir::OpBuilder::InsertionGuard guard(rewriter);
-    //   rewriter.setInsertionPointToStart(moduleOp.getBody());
-    //   rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName,
-    //   funcType);
-    // }
-
-    // rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, funcType, funcName,
-    //                                                 args);
+    // Default: two-qubit gate
+    llvm::SmallVector<mlir::Type, 2> params{ptrT, ptrT};
+    llvm::SmallVector<mlir::Value, 2> args{adaptor.getA(), adaptor.getB()};
+    std::string gateF = getQIRInsName(gateName, "body");
+    auto signature = mlir::LLVM::LLVMFunctionType::get(voidT, params);
+    addFuncDecl(gateF, signature, op, rewriter);
+    rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, signature, gateF, args);
 
     return mlir::success();
   }
 };
 
-struct HOpLowering : OptionallyControlledUnitaryOpLowering<qpin::HOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qpin::HOp>::OptionallyControlledUnitaryOpLowering;
+#define DEFINE_UNITARY_OP_LOWERING(OP, NAME)                                   \
+  struct OP##Lowering : UnitaryOpLowering<qpin::OP> {                          \
+    using UnitaryOpLowering<qpin::OP>::UnitaryOpLowering;                      \
+    mlir::LogicalResult                                                        \
+    matchAndRewrite(qpin::OP op, OpAdaptor adaptor,                            \
+                    mlir::ConversionPatternRewriter &rewriter) const final {   \
+      return matchAndRewriteImpl(op, adaptor, rewriter, NAME);                 \
+    }                                                                          \
+  };
 
-  mlir::LogicalResult
-  matchAndRewrite(qpin::HOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter, "h");
-  }
-};
-
-struct XOpLowering : OptionallyControlledUnitaryOpLowering<qpin::XOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qpin::XOp>::OptionallyControlledUnitaryOpLowering;
-
-  mlir::LogicalResult
-  matchAndRewrite(qpin::XOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter, "x");
-  }
-};
-
-struct YOpLowering : OptionallyControlledUnitaryOpLowering<qpin::YOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qpin::YOp>::OptionallyControlledUnitaryOpLowering;
-
-  mlir::LogicalResult
-  matchAndRewrite(qpin::YOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter, "y");
-  }
-};
-
-struct ZOpLowering : OptionallyControlledUnitaryOpLowering<qpin::ZOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qpin::ZOp>::OptionallyControlledUnitaryOpLowering;
-
-  mlir::LogicalResult
-  matchAndRewrite(qpin::ZOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter, "z");
-  }
-};
-
-struct SOpLowering : OptionallyControlledUnitaryOpLowering<qpin::SOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qpin::SOp>::OptionallyControlledUnitaryOpLowering;
-
-  mlir::LogicalResult
-  matchAndRewrite(qpin::SOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter, "s");
-  }
-};
-
-struct TOpLowering : OptionallyControlledUnitaryOpLowering<qpin::TOp> {
-  using OptionallyControlledUnitaryOpLowering<
-      qpin::TOp>::OptionallyControlledUnitaryOpLowering;
-
-  mlir::LogicalResult
-  matchAndRewrite(qpin::TOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    return matchAndRewriteImpl(op, adaptor, rewriter, "t");
-  }
-};
-
-struct SwapOpLowering : mlir::OpConversionPattern<qpin::SwapOp> {
-  using mlir::OpConversionPattern<qpin::SwapOp>::OpConversionPattern;
-
-  mlir::LogicalResult
-  matchAndRewrite(qpin::SwapOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    auto moduleOp = op->getParentOfType<mlir::ModuleOp>();
-    if (!moduleOp) {
-      return mlir::failure();
-    }
-
-    const auto voidType = mlir::LLVM::LLVMVoidType::get(op.getContext());
-    const auto param = mlir::LLVM::LLVMPointerType::get(op->getContext());
-
-    const std::string funcName = getQIRInsName("swap", "body");
-    const llvm::SmallVector<mlir::Value, 2> args{adaptor.getA(),
-                                                 adaptor.getB()};
-    const llvm::SmallVector<mlir::Type, 2> params{param, param};
-
-    const auto funcType = mlir::LLVM::LLVMFunctionType::get(voidType, params);
-
-    const auto funcOp = moduleOp.lookupSymbol<mlir::LLVM::LLVMFuncOp>(funcName);
-    if (!funcOp) {
-      mlir::OpBuilder::InsertionGuard guard(rewriter);
-      rewriter.setInsertionPointToStart(moduleOp.getBody());
-      rewriter.create<mlir::LLVM::LLVMFuncOp>(op->getLoc(), funcName, funcType);
-    }
-
-    rewriter.replaceOpWithNewOp<mlir::LLVM::CallOp>(op, funcType, funcName,
-                                                    args);
-
-    return mlir::success();
-  }
-};
+DEFINE_UNITARY_OP_LOWERING(HOp, "h")
+DEFINE_UNITARY_OP_LOWERING(XOp, "x")
+DEFINE_UNITARY_OP_LOWERING(YOp, "y")
+DEFINE_UNITARY_OP_LOWERING(ZOp, "z")
+DEFINE_UNITARY_OP_LOWERING(SOp, "s")
+DEFINE_UNITARY_OP_LOWERING(TOp, "t")
+DEFINE_UNITARY_OP_LOWERING(SwapOp, "swap")
 
 //===----------------------------------------------------------------------===//
 // Type Converter
