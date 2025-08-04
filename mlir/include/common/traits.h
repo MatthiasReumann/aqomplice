@@ -19,16 +19,13 @@ class InsideQPUKernelTrait
 public:
   static LogicalResult verifyTrait(Operation *op) {
     const auto p = op->getParentOp();
-    if (llvm::isa_and_nonnull<func::FuncOp>(p) && p->hasAttr("qpu.kernel")) {
-      if (auto k = p->getAttrOfType<BoolAttr>("qpu.kernel")) {
-        if (k.getValue()) {
-          return success();
-        }
-      }
+    if (llvm::isa_and_nonnull<func::FuncOp>(p) && p->hasAttr("qpu.kernel") &&
+        p->hasAttr("no_inline")) {
+      return success();
     }
 
     return op->emitOpError() << "expects parent op to be func.func with "
-                                "attribute 'qpu.kernel' set to true";
+                                "unit attributes 'qpu.kernel' and 'no_inline'";
   }
 };
 
