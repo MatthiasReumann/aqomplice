@@ -26,9 +26,9 @@
 #ifndef AQOMPLICE_QPIN_OP_INTERFACES_H
 #define AQOMPLICE_QPIN_OP_INTERFACES_H
 
-#include "mlir/IR/BuiltinTypes.h"                  // IWYU pragma: keep
-#include "mlir/IR/Dialect.h"                       // IWYU pragma: keep
-#include "mlir/IR/OpDefinition.h"                  // IWYU pragma: keep
+#include "mlir/IR/BuiltinTypes.h" // IWYU pragma: keep
+#include "mlir/IR/Dialect.h"      // IWYU pragma: keep
+#include "mlir/IR/OpDefinition.h" // IWYU pragma: keep
 
 #include "QPin/IR/QPinOpsInterfaces.h.inc"
 
@@ -44,7 +44,8 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"  // IWYU pragma: keep
 #include "mlir/Interfaces/SideEffectInterfaces.h"  // IWYU pragma: keep
 
-#include "common/traits.h" // IWYU pragma: keep
+#include "common/interfaces.h" // IWYU pragma: keep
+#include "common/traits.h"     // IWYU pragma: keep
 
 #define GET_OP_CLASSES
 #include "QPin/IR/QPinOps.h.inc"

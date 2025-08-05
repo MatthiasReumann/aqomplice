@@ -1,5 +1,5 @@
 module {
-    q.kernel @qft(%shared: memref<3xi1>) -> () {
+    func.func @qft(%shared: memref<?x3xi1>, %iv: index) -> () attributes {qpu.kernel, no_inline} {
         %nqubits = arith.constant 3 : i32
         
         %c0_i32 = arith.constant 0 : i32
@@ -19,10 +19,10 @@ module {
         
         // Apply three qubit QFT gate sequence.
         q.h %q0
-        q.s %q0 ctrl %q1
-        q.t %q0 ctrl %q2
+        q.s ctrld %q0, %q1
+        q.t ctrld %q0, %q2
         q.h %q1 
-        q.s %q1 ctrl %q2 
+        q.s ctrld %q1, %q2 
         q.h %q2
         q.swap %q0, %q2
 
@@ -33,16 +33,23 @@ module {
 
         q.free %r
 
-        memref.store %b0, %shared[%idx0] : memref<3xi1>
-        memref.store %b1, %shared[%idx1] : memref<3xi1>
-        memref.store %b2, %shared[%idx2] : memref<3xi1>
+        memref.store %b0, %shared[%iv, %idx0] : memref<?x3xi1>
+        memref.store %b1, %shared[%iv, %idx1] : memref<?x3xi1>
+        memref.store %b2, %shared[%iv, %idx2] : memref<?x3xi1>
 
-        q.return
+        func.return
     }
 
     func.func @main() -> () {
-        %shared = memref.alloc() : memref<3xi1>
-        q.call @qft(%shared) : (memref<3xi1>) -> ()
+        %zero = index.constant 0
+        %step = index.constant 1
+        %shots = index.constant 1024
+        
+        %shared = memref.alloc(%shots) : memref<?x3xi1>
+        scf.for %iv = %zero to %shots step %step {
+            func.call @qft(%shared, %iv) : (memref<?x3xi1>, index) -> ()
+        }
+
         func.return
     }
 }

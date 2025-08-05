@@ -5,6 +5,8 @@ mlir_tablegen(QOpsDialect.h.inc -gen-dialect-decls)
 mlir_tablegen(QOpsDialect.cpp.inc -gen-dialect-defs)
 mlir_tablegen(QOpsTypes.h.inc -gen-typedef-decls)
 mlir_tablegen(QOpsTypes.cpp.inc -gen-typedef-defs)
+mlir_tablegen(QOpsInterfaces.h.inc -gen-op-interface-decls)
+mlir_tablegen(QOpsInterfaces.cpp.inc -gen-op-interface-defs)
 add_public_tablegen_target(AqompliceQIncGen)
 
 add_mlir_doc(QOps QOps Dialects/ -gen-op-doc)

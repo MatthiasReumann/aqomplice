@@ -1,5 +1,6 @@
 #include "transforms/fit-topology/architecture.h"
 
+#include "common/interfaces.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Value.h"
 
@@ -120,16 +121,12 @@ void Architecture::localOptimalSwap(mlir::OpBuilder &builder,
   std::ignore = op->walk([&](mlir::Operation *op) {
     if (auto qubitOp = mlir::dyn_cast<qpin::QubitOp>(op)) {
       indices[qubitOp.getIndex()] = qubitOp.getQubit();
-    } else if (auto unitary =
-                   mlir::dyn_cast<qpin::ControlledUnitaryOpInterface>(op)) {
-      if (!unitary.hasControl()) { // Single Qubit Gates don't require mapping.
+    } else if (auto ui = mlir::dyn_cast<UnitaryOpInterface>(op)) {
+      if (!ui.hasSecondary()) { // Single Qubit Gates don't require mapping.
         return mlir::WalkResult::advance();
       }
-      localOptimalPerformSwap(builder, unitary, permutation, indices,
-                              unitary.getTarget(), unitary.getControl());
-    } else if (auto swap = mlir::dyn_cast<qpin::SwapOp>(op)) {
-      localOptimalPerformSwap(builder, swap, permutation, indices, swap.getA(),
-                              swap.getB());
+      localOptimalPerformSwap(builder, ui, permutation, indices,
+                              ui.getPrimary(), ui.getSecondary());
     }
     return mlir::WalkResult::advance();
   });

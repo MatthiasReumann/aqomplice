@@ -8,6 +8,7 @@ include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
 
 include "common/traits.td"
+include "common/interfaces.td"
 
 include "QZap/IR/QZapDialect.td"
 include "QZap/IR/QZapTypes.td"
@@ -16,63 +17,13 @@ class QZap_Op<string mnemonic, list<Trait> traits = []>
     : Op<QZap_Dialect, mnemonic, traits>;
 
 //===----------------------------------------------------------------------===//
-// Kernel Operations
-//===----------------------------------------------------------------------===//
-
-def KernelOp : QZap_Op<"kernel", [FunctionOpInterface, IsolatedFromAbove]> {
-  let summary = "quantum kernel";
-  let arguments = (ins SymbolNameAttr:$sym_name,
-      TypeAttrOf<FunctionType>:$function_type,
-      OptionalAttr<DictArrayAttr>:$arg_attrs,
-      OptionalAttr<DictArrayAttr>:$res_attrs);
-  let regions = (region AnyRegion:$body);
-
-  let builders = [OpBuilder<(ins "mlir::StringRef":$name,
-      "mlir::FunctionType":$type,
-      CArg<"mlir::ArrayRef<mlir::NamedAttribute>", "{}">:$attrs)>];
-
-  // Add FunctionOpInterface methods
-  let extraClassDeclaration = [{
-        mlir::ArrayRef<mlir::Type> getArgumentTypes() { return getFunctionType().getInputs(); }
-        mlir::ArrayRef<mlir::Type> getResultTypes() { return getFunctionType().getResults(); }
-        mlir::Region *getCallableRegion() { return &getBody(); }
-    }];
-
-  let hasCustomAssemblyFormat = 1;
-  let skipDefaultBuilders = 1;
-  let hasRegionVerifier = 1;
-}
-
-def ReturnOp : QZap_Op<"return", [Pure, HasParent<"KernelOp">, Terminator, ReturnLike]> {
-  let summary = "return from quantum kernel";
-  let description = [{}];
-  let arguments = (ins Variadic<I1>:$input);
-  let assemblyFormat = "attr-dict ($input^ `:` type($input))?";
-}
-
-def CallOp : QZap_Op<"call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
-  let summary = "call quantum kernel";
-  let description = [{}];
-  let arguments = (ins
-    FlatSymbolRefAttr:$callee,
-    Variadic<AnyType>:$operands,
-    OptionalAttr<DictArrayAttr>:$arg_attrs,
-    OptionalAttr<DictArrayAttr>:$res_attrs
-  );
-  let results = (outs Variadic<I1>);
-  let assemblyFormat = [{ 
-    $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
-  }];
-}
-
-//===----------------------------------------------------------------------===//
 // Quantum Register Operations
 //===----------------------------------------------------------------------===//
 
 class Memory_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
-def AllocOp : Memory_Op<"alloc", [HasParent<"KernelOp">]> {
+def AllocOp : Memory_Op<"alloc", [InsideQPUKernel]> {
   let summary = "allocate n qubits into a quantum register";
   let description = [{
     Ensures implicitly that all other quantum 
@@ -126,51 +77,54 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]> {}
+  : Gate_Op<mnemonic, traits#[Unitary, UnitaryOpInterface]> {
+  let arguments = (ins
+    QubitType:$primary_in, 
+    Optional<QubitType>:$secondary_in, 
+    UnitAttr:$ctrld
+  );
+  
+  let results = (outs
+    QubitType:$primary_out,
+    Optional<QubitType>:$secondary_out
+  );
 
-class OptionallyControlledUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits> {
-  let arguments = (ins QubitType:$target_in, Optional<QubitType>:$control_in);
-  let results = (outs QubitType:$target_out, Optional<QubitType>:$control_out);
-  let assemblyFormat = " attr-dict $target_in ( `ctrl` $control_in^ )? `:` functional-type(operands, results) ";
+  let extraClassDeclaration = [{
+    mlir::Value getPrimary() { return getPrimaryIn(); }
+    mlir::Value getSecondary() { return getSecondaryIn(); }
+    bool hasSecondary() { return getSecondaryIn() != nullptr; }
+    bool isControlled() { return getCtrld(); }
+  }];
+
+  let assemblyFormat = " attr-dict (`ctrld` $ctrld^)? $primary_in ( `,` $secondary_in^ )? `:` functional-type(operands, results) ";
 }
 
-def HOp : OptionallyControlledUnitary_Op<"h", [Hermitian]> {
-  let summary = "apply H operation to target qubit";
-  let description = [{}];
+def HOp : Unitary_Op<"h", [Hermitian]> {
+  let summary = "H operation";
 }
 
-def XOp : OptionallyControlledUnitary_Op<"x", [Hermitian]> {
-  let summary = "apply X operation to target qubit";
-  let description = [{}];
+def XOp : Unitary_Op<"x", [Hermitian]> {
+  let summary = "X operation";
 }
 
-def YOp : OptionallyControlledUnitary_Op<"y", [Hermitian]> {
-  let summary = "apply Y operation to target qubit";
-  let description = [{}];
+def YOp : Unitary_Op<"y", [Hermitian]> {
+  let summary = "Y operation";
 }
 
-def ZOp : OptionallyControlledUnitary_Op<"z", [Hermitian]> {
-  let summary = "apply Z operation to target qubit";
-  let description = [{}];
+def ZOp : Unitary_Op<"z", [Hermitian]> {
+  let summary = "Z operation";
 }
 
-def SOp : OptionallyControlledUnitary_Op<"s"> {
-  let summary = "apply S operation to target qubit";
-  let description = [{}];
+def SOp : Unitary_Op<"s"> {
+  let summary = "S operation";
 }
 
-def TOp : OptionallyControlledUnitary_Op<"t"> {
-  let summary = "apply T operation to target qubit";
-  let description = [{}];
+def TOp : Unitary_Op<"t"> {
+  let summary = "T operation";
 }
 
 def SwapOp : Unitary_Op<"swap", [Hermitian]> {
-  let summary = "apply swap operation to qubits a and b";
-  let description = [{}];
-  let arguments = (ins QubitType:$a_in, QubitType:$b_in);
-  let results = (outs QubitType:$a_out, Optional<QubitType>:$b_out);
-  let assemblyFormat = " attr-dict $a_in `,` $b_in `:` functional-type(operands, results) ";
+  let summary = "SWAP operation";
 }
 
 #endif // AQOMPLICE_QZAP_OPS_TD

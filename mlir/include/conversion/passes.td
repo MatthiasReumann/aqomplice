@@ -14,6 +14,10 @@ def QToQZap : Pass<"q-to-qzap"> {
 def QZapToQPin : Pass<"qzap-to-qpin"> {
   let summary = "Lower `qzap` to `qpin`";
   let description = [{}];
+  let options = [
+    Option<"arch", "arch", "std::string", /*default=*/"",
+           "The name of the architecture.">,
+  ];
   let dependentDialects = [
     "aqomplice::qpin::QPinDialect"
   ];
@@ -24,14 +28,6 @@ def QPinToLLVM : Pass<"qpin-to-llvm"> {
   let description = [{}];
   let dependentDialects = [
     "mlir::LLVM::LLVMDialect"
-  ];
-}
-
-def QPinToFunc : Pass<"qpin-to-func"> {
-  let summary = "lower `qpin` kernel ops to `func` dialect ops";
-  let description = [{}];
-  let dependentDialects = [
-    "mlir::func::FuncDialect"
   ];
 }
 
