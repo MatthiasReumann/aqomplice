@@ -3,20 +3,24 @@
 
 include "mlir/IR/OpBase.td"
 
-def ControlledUnitaryOpInterface : OpInterface<"ControlledUnitaryOpInterface"> {
+def UnitaryOpInterface : OpInterface<"UnitaryOpInterface"> {
   let description = [{}];
   let methods = [
     InterfaceMethod<
-      "Return the target qubit.", 
-      "mlir::Value", "getTarget"
+      "Return primary qubit.", 
+      "mlir::Value", "getPrimary"
     >,
     InterfaceMethod<
-      "Return the control qubit.", 
-      "mlir::Value", "getControl"
+      "Returns secondary qubit.", 
+      "mlir::Value", "getSecondary"
     >,
     InterfaceMethod<
-      "Returns true if the op has a control qubit.", 
-      "bool", "hasControl"
+      "Returns true if the op uses two qubits.", 
+      "bool", "hasSecondary"
+    >,
+    InterfaceMethod<
+      "Returns true if the op has the ctrld flag.", 
+      "bool", "isControlled"
     >
   ];
   let cppNamespace = "::aqomplice";

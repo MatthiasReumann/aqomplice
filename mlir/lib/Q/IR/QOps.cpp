@@ -26,33 +26,33 @@ using namespace mlir;
  * @brief Verify that the operand qubits of an unitary operation aren't used
  * after measurement.
  */
-template <typename UnitaryOp>
-bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
-                          const Operation &op) {
-  if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
-    bool used = measured.find(u.getTarget()) != measured.end();
-    if (auto ctrl = u.getControl()) {
-      used |= measured.find(ctrl) != measured.end();
-    }
-    return used;
-  }
+// template <typename UnitaryOp>
+// bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
+//                           const Operation &op) {
+//   if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
+//     bool used = measured.find(u.getTarget()) != measured.end();
+//     if (auto ctrl = u.getControl()) {
+//       used |= measured.find(ctrl) != measured.end();
+//     }
+//     return used;
+//   }
 
-  return false;
-}
+//   return false;
+// }
 
-/**
- * @brief Verify that the operand qubits of an unitary operation aren't used
- * after measurement.
- */
-template <>
-bool usedAfterMeasurement<q::SwapOp>(const llvm::DenseSet<Value> &measured,
-                                     const Operation &op) {
-  if (auto u = mlir::dyn_cast<q::SwapOp>(op)) {
-    return measured.find(u.getA()) != measured.end() &&
-           measured.find(u.getB()) != measured.end();
-  }
-  return false;
-}
+// /**
+//  * @brief Verify that the operand qubits of an unitary operation aren't used
+//  * after measurement.
+//  */
+// template <>
+// bool usedAfterMeasurement<q::SwapOp>(const llvm::DenseSet<Value> &measured,
+//                                      const Operation &op) {
+//   if (auto u = mlir::dyn_cast<q::SwapOp>(op)) {
+//     return measured.find(u.getA()) != measured.end() &&
+//            measured.find(u.getB()) != measured.end();
+//   }
+//   return false;
+// }
 
 /**
  * @brief Verify that the kernel fulfills QIR's base profile.

@@ -77,48 +77,54 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : QZap_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]> {
-  let arguments = (ins QubitType:$a_in, Optional<QubitType>:$b_in);
-  let results = (outs QubitType:$a_out, Optional<QubitType>:$b_out);
-}
+  : Gate_Op<mnemonic, traits#[Unitary, UnitaryOpInterface]> {
+  let arguments = (ins
+    QubitType:$primary_in, 
+    Optional<QubitType>:$secondary_in, 
+    UnitAttr:$ctrld
+  );
+  
+  let results = (outs
+    QubitType:$primary_out,
+    Optional<QubitType>:$secondary_out
+  );
 
-class CUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
   let extraClassDeclaration = [{
-        mlir::Value getTarget() { return getAIn(); }
-        mlir::Value getControl() { return getBIn(); }
-        bool hasControl() { return getBIn() != nullptr; }
+    mlir::Value getPrimary() { return getPrimaryIn(); }
+    mlir::Value getSecondary() { return getSecondaryIn(); }
+    bool hasSecondary() { return getSecondaryIn() != nullptr; }
+    bool isControlled() { return getCtrld(); }
   }];
-  let assemblyFormat = " attr-dict $a_in ( `ctrl` $b_in^ )? `:` functional-type(operands, results) ";
+
+  let assemblyFormat = " attr-dict (`ctrld` $ctrld^)? $primary_in ( `,` $secondary_in^ )? `:` functional-type(operands, results) ";
 }
 
-def HOp : CUnitary_Op<"h", [Hermitian]> {
-  let summary = "apply H operation";
+def HOp : Unitary_Op<"h", [Hermitian]> {
+  let summary = "H operation";
 }
 
-def XOp : CUnitary_Op<"x", [Hermitian]> {
-  let summary = "apply X operation";
+def XOp : Unitary_Op<"x", [Hermitian]> {
+  let summary = "X operation";
 }
 
-def YOp : CUnitary_Op<"y", [Hermitian]> {
-  let summary = "apply Y operation";
+def YOp : Unitary_Op<"y", [Hermitian]> {
+  let summary = "Y operation";
 }
 
-def ZOp : CUnitary_Op<"z", [Hermitian]> {
-  let summary = "apply Z operation";
+def ZOp : Unitary_Op<"z", [Hermitian]> {
+  let summary = "Z operation";
 }
 
-def SOp : CUnitary_Op<"s"> {
-  let summary = "apply S operation";
+def SOp : Unitary_Op<"s"> {
+  let summary = "S operation";
 }
 
-def TOp : CUnitary_Op<"t"> {
-  let summary = "apply T operation";
+def TOp : Unitary_Op<"t"> {
+  let summary = "T operation";
 }
 
 def SwapOp : Unitary_Op<"swap", [Hermitian]> {
-  let summary = "apply SWAP operation";
-  let assemblyFormat = " attr-dict $a_in `,` $b_in `:` functional-type(operands, results) ";
+  let summary = "SWAP operation";
 }
 
 #endif // AQOMPLICE_QZAP_OPS_TD

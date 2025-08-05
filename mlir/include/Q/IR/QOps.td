@@ -69,48 +69,45 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : Q_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]> {
-  let arguments = (ins QubitType:$a, Optional<QubitType>:$b);
+  : Gate_Op<mnemonic, traits#[Unitary, UnitaryOpInterface]> {
+  let arguments = (ins
+    QubitType:$primary,
+    Optional<QubitType>:$secondary,
+    UnitAttr:$ctrld);
   let results = (outs);
-}
-
-class CUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
-   let extraClassDeclaration = [{
-        mlir::Value getTarget() { return getA(); }
-        mlir::Value getControl() { return getB(); }
-        bool hasControl() { return getB() != nullptr; }
+  let extraClassDeclaration = [{
+        bool hasSecondary() { return getSecondary() != nullptr; }
+        bool isControlled() { return getCtrld(); }
   }];
-  let assemblyFormat = " attr-dict $a ( `ctrl` $b^ )?";
+  let assemblyFormat = " attr-dict (`ctrld` $ctrld^)? $primary (`,` $secondary^)? ";
 }
 
-def HOp : CUnitary_Op<"h", [Hermitian]> {
-  let summary = "apply H operation";
+def HOp : Unitary_Op<"h", [Hermitian]> {
+  let summary = "H operation";
 }
 
-def XOp : CUnitary_Op<"x", [Hermitian]> {
-  let summary = "apply X operation";
+def XOp : Unitary_Op<"x", [Hermitian]> {
+  let summary = "X operation";
 }
 
-def YOp : CUnitary_Op<"y", [Hermitian]> {
-  let summary = "apply Y operation";
+def YOp : Unitary_Op<"y", [Hermitian]> {
+  let summary = "Y operation";
 }
 
-def ZOp : CUnitary_Op<"z", [Hermitian]> {
-  let summary = "apply Z operation";
+def ZOp : Unitary_Op<"z", [Hermitian]> {
+  let summary = "Z operation";
 }
 
-def SOp : CUnitary_Op<"s"> {
-  let summary = "apply S operation";
+def SOp : Unitary_Op<"s"> {
+  let summary = "S operation";
 }
 
-def TOp : CUnitary_Op<"t"> {
-  let summary = "apply T operation";
+def TOp : Unitary_Op<"t"> {
+  let summary = "T operation";
 }
 
 def SwapOp : Unitary_Op<"swap", [Hermitian]> {
-  let summary = "apply SWAP operation";
-  let assemblyFormat = " attr-dict $a `,` $b";
+  let summary = "SWAP operation";
 }
 
 #endif // AQOMPLICE_Q_OPS_TD

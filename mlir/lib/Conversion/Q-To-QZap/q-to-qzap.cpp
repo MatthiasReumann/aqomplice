@@ -8,49 +8,49 @@
 #include <cassert>
 #include <utility>
 
+using namespace mlir;
+
 namespace aqomplice {
 #define GEN_PASS_DEF_QTOQZAP
 #include "conversion/passes.h.inc" // adds `impl::QToQZapBase`
 
 namespace q {
 namespace {
+
 /// @brief Internal state for lowering quantum ops.
 struct LoweringContext {
   struct QubitInfo {
     /// @brief The qubit returned from the quantum register.
-    mlir::Value qubit;
+    Value qubit;
     /// @brief The quantum register the qubit belongs to.
-    mlir::Value qreg;
+    Value qreg;
     /// @brief The index in the quantum register.
-    mlir::Value index;
+    Value index;
     /// @brief The amount of uses of the qubit in the kernel.
     std::size_t uses;
   };
   /// @brief Maps q::qubit to qzap::qubit and some additional infos.
-  llvm::DenseMap<mlir::Value, QubitInfo> qubits{};
+  llvm::DenseMap<Value, QubitInfo> qubits{};
   /// @brief Maps q::qreq to qzap::qreq.
-  llvm::DenseMap<mlir::Value, mlir::Value> qregs{};
+  llvm::DenseMap<Value, Value> qregs{};
   /// @brief Clean-up verification
   bool isCleanedUp() const { return qregs.empty() && qubits.empty(); }
 };
 
 template <typename OpType>
-class StatefulOpConversionPattern : public mlir::OpConversionPattern<OpType> {
-  using mlir::OpConversionPattern<OpType>::OpConversionPattern;
+class StatefulOpConversionPattern : public OpConversionPattern<OpType> {
+  using OpConversionPattern<OpType>::OpConversionPattern;
 
 public:
-  StatefulOpConversionPattern(mlir::TypeConverter &typeConverter,
-                              mlir::MLIRContext *context,
-                              LoweringContext &state)
-      : mlir::OpConversionPattern<OpType>(typeConverter, context),
-        state_(state) {}
+  StatefulOpConversionPattern(TypeConverter &typeConverter,
+                              MLIRContext *context, LoweringContext &state)
+      : OpConversionPattern<OpType>(typeConverter, context), state_(state) {}
 
 protected:
   LoweringContext &getState() const { return state_; }
 
-  [[nodiscard]] bool
-  hasZeroUses(mlir::Value q, const mlir::Location loc,
-              mlir::ConversionPatternRewriter &rewriter) const {
+  [[nodiscard]] bool hasZeroUses(Value q, const Location loc,
+                                 ConversionPatternRewriter &rewriter) const {
     auto &info = getState().qubits[q];
     if ((--info.uses) == 0) {
       auto qregIn = getState().qregs[info.qreg];
@@ -76,38 +76,38 @@ private:
 struct AllocOpLowering : StatefulOpConversionPattern<q::AllocOp> {
   using StatefulOpConversionPattern<q::AllocOp>::StatefulOpConversionPattern;
 
-  mlir::LogicalResult
+  LogicalResult
   matchAndRewrite(q::AllocOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Type qreg = typeConverter->convertType(op.getQreg().getType());
+                  ConversionPatternRewriter &rewriter) const final {
+    Type qreg = typeConverter->convertType(op.getQreg().getType());
     qzap::AllocOp alloc = rewriter.replaceOpWithNewOp<qzap::AllocOp>(
         op, qreg, adaptor.getNqubits());
     getState().qregs[op.getQreg()] = alloc.getQreg();
-    return mlir::success();
+    return success();
   }
 };
 
 struct FreeOpLowering : StatefulOpConversionPattern<q::FreeOp> {
   using StatefulOpConversionPattern<q::FreeOp>::StatefulOpConversionPattern;
 
-  mlir::LogicalResult
+  LogicalResult
   matchAndRewrite(q::FreeOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Value qregIn = getState().qregs[op.getQreg()];
+                  ConversionPatternRewriter &rewriter) const final {
+    Value qregIn = getState().qregs[op.getQreg()];
     rewriter.replaceOpWithNewOp<qzap::FreeOp>(op, qregIn);
     getState().qregs.erase(op.getQreg());
-    return mlir::success();
+    return success();
   }
 };
 
 struct RetrieveOpLowering : StatefulOpConversionPattern<q::RetrieveOp> {
   using StatefulOpConversionPattern<q::RetrieveOp>::StatefulOpConversionPattern;
 
-  mlir::LogicalResult
+  LogicalResult
   matchAndRewrite(q::RetrieveOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
-    mlir::Type qubit = typeConverter->convertType(op.getQubit().getType());
-    mlir::Value qregIn = getState().qregs[op.getQreg()];
+                  ConversionPatternRewriter &rewriter) const final {
+    Type qubit = typeConverter->convertType(op.getQubit().getType());
+    Value qregIn = getState().qregs[op.getQreg()];
 
     const auto range = op.getQubit().getUses();
     const std::size_t uses = std::distance(range.begin(), range.end());
@@ -119,7 +119,7 @@ struct RetrieveOpLowering : StatefulOpConversionPattern<q::RetrieveOp> {
     getState().qubits[op.getQubit()] = {retrieve.getQubit(), op.getQreg(),
                                         retrieve.getIndex(), uses};
 
-    return mlir::success();
+    return success();
   }
 };
 
@@ -130,9 +130,9 @@ struct RetrieveOpLowering : StatefulOpConversionPattern<q::RetrieveOp> {
 struct MeasureOpLowering : StatefulOpConversionPattern<q::MeasureOp> {
   using StatefulOpConversionPattern<q::MeasureOp>::StatefulOpConversionPattern;
 
-  mlir::LogicalResult
+  LogicalResult
   matchAndRewrite(q::MeasureOp op, OpAdaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
+                  ConversionPatternRewriter &rewriter) const final {
     LoweringContext::QubitInfo &info = getState().qubits[op.getQubit()];
 
     qzap::MeasureOp m = rewriter.replaceOpWithNewOp<qzap::MeasureOp>(
@@ -141,7 +141,7 @@ struct MeasureOpLowering : StatefulOpConversionPattern<q::MeasureOp> {
     info.qubit = m.getQubitOut();
     std::ignore = hasZeroUses(op.getQubit(), op.getLoc(), rewriter);
 
-    return mlir::success();
+    return success();
   }
 };
 
@@ -154,39 +154,44 @@ class UnitaryOpLowering : public StatefulOpConversionPattern<SourceOp> {
 public:
   using StatefulOpConversionPattern<SourceOp>::StatefulOpConversionPattern;
 
-  mlir::LogicalResult
+  LogicalResult
   matchAndRewrite(SourceOp op, typename SourceOp::Adaptor adaptor,
-                  mlir::ConversionPatternRewriter &rewriter) const final {
+                  ConversionPatternRewriter &rewriter) const final {
     return matchAndRewriteImpl(op, adaptor, rewriter);
   }
 
 private:
-  mlir::LogicalResult
-  matchAndRewriteImpl(SourceOp op, typename SourceOp::Adaptor adaptor,
-                      mlir::ConversionPatternRewriter &rewriter) const {
-
-    auto ctrld =
-        mlir::dyn_cast<ControlledUnitaryOpInterface>(op.getOperation());
-    if (ctrld && !ctrld.hasControl()) {
-      LoweringContext::QubitInfo &a = this->getState().qubits[op.getA()];
-      auto u =
-          rewriter.create<DestOp>(op->getLoc(), a.qubit.getType(), a.qubit);
-      a.qubit = u.getAOut();
-      std::ignore = this->hasZeroUses(op.getA(), op->getLoc(), rewriter);
+  LogicalResult matchAndRewriteImpl(SourceOp op,
+                                    typename SourceOp::Adaptor adaptor,
+                                    ConversionPatternRewriter &rewriter) const {
+    UnitaryOpInterface ui = dyn_cast<UnitaryOpInterface>(op.getOperation());
+    if (!ui.hasSecondary()) {
+      LoweringContext::QubitInfo &a = this->getState().qubits[op.getPrimary()];
+      auto u = rewriter.create<DestOp>(op->getLoc(),
+                                       /* primary_out = */ a.qubit.getType(),
+                                       /* primary_in = */ a.qubit,
+                                       /* secondary_in = */ nullptr,
+                                       /* ctrld = */ ui.isControlled());
+      a.qubit = u.getPrimaryOut();
+      std::ignore = this->hasZeroUses(op.getPrimary(), op->getLoc(), rewriter);
       rewriter.eraseOp(op);
-      return mlir::success();
+      return success();
     }
 
-    LoweringContext::QubitInfo &a = this->getState().qubits[op.getA()];
-    LoweringContext::QubitInfo &b = this->getState().qubits[op.getB()];
-    auto u = rewriter.create<DestOp>(op->getLoc(), a.qubit.getType(),
-                                     b.qubit.getType(), a.qubit, b.qubit);
-    a.qubit = u.getAOut();
-    b.qubit = u.getBOut();
-    std::ignore = this->hasZeroUses(op.getA(), op->getLoc(), rewriter);
-    std::ignore = this->hasZeroUses(op.getB(), op->getLoc(), rewriter);
+    LoweringContext::QubitInfo &a = this->getState().qubits[op.getPrimary()];
+    LoweringContext::QubitInfo &b = this->getState().qubits[op.getSecondary()];
+    auto u = rewriter.create<DestOp>(op->getLoc(),
+                                     /* primary_out = */ a.qubit.getType(),
+                                     /* secondary_out = */ b.qubit.getType(),
+                                     /* primary_in = */ a.qubit,
+                                     /* secondary_in = */ b.qubit,
+                                     /* ctrld = */ ui.isControlled());
+    a.qubit = u.getPrimaryOut();
+    b.qubit = u.getSecondaryOut();
+    std::ignore = this->hasZeroUses(op.getPrimary(), op->getLoc(), rewriter);
+    std::ignore = this->hasZeroUses(op.getSecondary(), op->getLoc(), rewriter);
     rewriter.eraseOp(op);
-    return mlir::success();
+    return success();
   }
 };
 
@@ -207,9 +212,9 @@ DEFINE_UNITARY_OP_LOWERING(SwapOp)
 // Type Converter
 //===----------------------------------------------------------------------===//
 
-struct ConversionTypeConverter : mlir::TypeConverter {
-  ConversionTypeConverter(mlir::MLIRContext *ctx) {
-    addConversion([](mlir::Type type) { return type; });
+struct ConversionTypeConverter : TypeConverter {
+  ConversionTypeConverter(MLIRContext *ctx) {
+    addConversion([](Type type) { return type; });
     addConversion(
         [ctx](q::QubitType type) { return qzap::QubitType::get(ctx); });
     addConversion([ctx](q::QubitArrayType type) {
@@ -223,22 +228,21 @@ struct QToQZap : impl::QToQZapBase<QToQZap> {
   using QToQZapBase::QToQZapBase;
 
   void runOnOperation() override {
-    mlir::MLIRContext *context = &getContext();
-    mlir::Operation *op = getOperation();
+    MLIRContext *context = &getContext();
+    Operation *op = getOperation();
 
     LoweringContext state{};
 
-    mlir::ConversionTarget target(*context);
+    ConversionTarget target(*context);
     target.addIllegalDialect<QDialect>();
     target.addLegalDialect<qzap::QZapDialect>();
 
     ConversionTypeConverter typeConverter(context);
-    mlir::RewritePatternSet patterns(context);
-    patterns
-        .add<AllocOpLowering, FreeOpLowering, RetrieveOpLowering,
-             MeasureOpLowering, HOpLowering, XOpLowering, YOpLowering,
-             ZOpLowering, SOpLowering, TOpLowering, SwapOpLowering>(
-            typeConverter, context, state);
+    RewritePatternSet patterns(context);
+    patterns.add<AllocOpLowering, FreeOpLowering, RetrieveOpLowering,
+                 MeasureOpLowering, HOpLowering, XOpLowering, YOpLowering,
+                 ZOpLowering, SOpLowering, TOpLowering, SwapOpLowering>(
+        typeConverter, context, state);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
       signalPassFailure();

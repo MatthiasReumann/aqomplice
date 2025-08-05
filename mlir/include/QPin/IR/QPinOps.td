@@ -21,8 +21,11 @@ class QPin_Op<string mnemonic, list<Trait> traits = []>
 //===----------------------------------------------------------------------===//
 
 def QubitOp : QPin_Op<"qubit", [InsideQPUKernel]> {
-  let summary = "static qubit address";
-  let description = [{}];
+  let summary = "Static qubit address";
+  let description = [{
+     The `qpin.qubit` operation produces an SSA value from the given index
+     to a static (device) qubit.
+  }];
   let arguments = (ins I32Attr:$index);
   let results = (outs StaticQubitType:$qubit);
   let assemblyFormat = "attr-dict $index";
@@ -33,8 +36,17 @@ def QubitOp : QPin_Op<"qubit", [InsideQPUKernel]> {
 //===----------------------------------------------------------------------===//
 
 def MeasureOp : QPin_Op<"measure"> {
-  let summary = "measure in the computational basis";
-  let description = [{}];
+  let summary = "Measure in the computational basis";
+   let description = [{
+      The `qpin.measure` operation represents the measurement operation. It takes a
+      qubit as input and returns the measured bit. The returned bit indicates whether 
+      the respective qubit collapsed to |0> or |1>.
+
+      Example:
+      ```mlir
+      %b = "qpin.measure"(%q) : (!qpin.StaticQubit) -> (i1)
+      ```
+    }];
   let arguments = (ins StaticQubitType:$qubit);
   let results = (outs I1:$bit);
   let assemblyFormat = " attr-dict $qubit";
@@ -48,48 +60,45 @@ class Gate_Op<string mnemonic, list<Trait> traits = []>
     : QPin_Op<mnemonic, traits>;
 
 class Unitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Gate_Op<mnemonic, traits#[Unitary]> {
-  let arguments = (ins StaticQubitType:$a, Optional<StaticQubitType>:$b);
+  : Gate_Op<mnemonic, traits#[Unitary, UnitaryOpInterface]> {
+  let arguments = (ins
+    StaticQubitType:$primary,
+    Optional<StaticQubitType>:$secondary,
+    UnitAttr:$ctrld);
   let results = (outs);
-}
-
-class CUnitary_Op<string mnemonic, list<Trait> traits = []> 
-  : Unitary_Op<mnemonic, traits#[ControlledUnitaryOpInterface]> {
-   let extraClassDeclaration = [{
-        mlir::Value getTarget() { return getA(); }
-        mlir::Value getControl() { return getB(); }
-        bool hasControl() { return getB() != nullptr; }
+  let extraClassDeclaration = [{
+        bool hasSecondary() { return getSecondary() != nullptr; }
+        bool isControlled() { return getCtrld(); }
   }];
-  let assemblyFormat = " attr-dict $a ( `ctrl` $b^ )?";
+  let assemblyFormat = " attr-dict (`ctrld` $ctrld^)? $primary (`,` $secondary^)? ";
 }
 
-def HOp : CUnitary_Op<"h", [Hermitian]> {
-  let summary = "apply H operation";
+def HOp : Unitary_Op<"h", [Hermitian]> {
+  let summary = "H operation";
 }
 
-def XOp : CUnitary_Op<"x", [Hermitian]> {
-  let summary = "apply X operation";
+def XOp : Unitary_Op<"x", [Hermitian]> {
+  let summary = "X operation";
 }
 
-def YOp : CUnitary_Op<"y", [Hermitian]> {
-  let summary = "apply Y operation";
+def YOp : Unitary_Op<"y", [Hermitian]> {
+  let summary = "Y operation";
 }
 
-def ZOp : CUnitary_Op<"z", [Hermitian]> {
-  let summary = "apply Z operation";
+def ZOp : Unitary_Op<"z", [Hermitian]> {
+  let summary = "Z operation";
 }
 
-def SOp : CUnitary_Op<"s"> {
-  let summary = "apply S operation";
+def SOp : Unitary_Op<"s"> {
+  let summary = "S operation";
 }
 
-def TOp : CUnitary_Op<"t"> {
-  let summary = "apply T operation";
+def TOp : Unitary_Op<"t"> {
+  let summary = "T operation";
 }
 
 def SwapOp : Unitary_Op<"swap", [Hermitian]> {
-  let summary = "apply swap operation";
-  let assemblyFormat = " attr-dict $a `,` $b";
+  let summary = "SWAP operation";
 }
 
 #endif // AQOMPLICE_QPIN_OPS_TD

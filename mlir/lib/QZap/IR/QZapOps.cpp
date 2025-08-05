@@ -26,58 +26,58 @@ using namespace mlir;
  * @brief Verify that the operand qubits of an unitary operation aren't used
  * after measurement.
  */
-template <typename UnitaryOp>
-bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
-                          const Operation &op) {
-  if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
-    bool used = measured.find(u.getAIn()) != measured.end();
-    if (auto ctrl = u.getBIn()) {
-      used |= measured.find(ctrl) != measured.end();
-    }
-    return used;
-  }
+// template <typename UnitaryOp>
+// bool usedAfterMeasurement(const llvm::DenseSet<Value> &measured,
+//                           const Operation &op) {
+//   if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
+//     bool used = measured.find(u.getAIn()) != measured.end();
+//     if (auto ctrl = u.getBIn()) {
+//       used |= measured.find(ctrl) != measured.end();
+//     }
+//     return used;
+//   }
 
-  return false;
-}
+//   return false;
+// }
 
-/**
- * @brief Verify that the operand qubits of an unitary operation aren't used
- * after measurement.
- */
-template <>
-bool usedAfterMeasurement<qzap::SwapOp>(const llvm::DenseSet<Value> &measured,
-                                        const Operation &op) {
-  if (auto u = mlir::dyn_cast<qzap::SwapOp>(op)) {
-    return measured.find(u.getAIn()) != measured.end() &&
-           measured.find(u.getBIn()) != measured.end();
-  }
-  return false;
-}
+// /**
+//  * @brief Verify that the operand qubits of an unitary operation aren't used
+//  * after measurement.
+//  */
+// template <>
+// bool usedAfterMeasurement<qzap::SwapOp>(const llvm::DenseSet<Value> &measured,
+//                                         const Operation &op) {
+//   if (auto u = mlir::dyn_cast<qzap::SwapOp>(op)) {
+//     return measured.find(u.getAIn()) != measured.end() &&
+//            measured.find(u.getBIn()) != measured.end();
+//   }
+//   return false;
+// }
 
-template <typename UnitaryOp>
-void updateRetrievedButUnstored(llvm::DenseSet<Value> &retrievedButUnstored,
-                                const Operation &op) {
-  if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
-    retrievedButUnstored.erase(u.getAIn());
-    retrievedButUnstored.erase(u.getAOut());
+// template <typename UnitaryOp>
+// void updateRetrievedButUnstored(llvm::DenseSet<Value> &retrievedButUnstored,
+//                                 const Operation &op) {
+//   if (auto u = mlir::dyn_cast<UnitaryOp>(op)) {
+//     retrievedButUnstored.erase(u.getAIn());
+//     retrievedButUnstored.erase(u.getAOut());
 
-    if (auto ctrl = u.getBIn()) {
-      retrievedButUnstored.erase(u.getBIn());
-      retrievedButUnstored.erase(u.getBOut());
-    }
-  }
-}
+//     if (auto ctrl = u.getBIn()) {
+//       retrievedButUnstored.erase(u.getBIn());
+//       retrievedButUnstored.erase(u.getBOut());
+//     }
+//   }
+// }
 
-template <>
-void updateRetrievedButUnstored<qzap::SwapOp>(
-    llvm::DenseSet<Value> &retrievedButUnstored, const Operation &op) {
-  if (auto u = mlir::dyn_cast<qzap::SwapOp>(op)) {
-    retrievedButUnstored.erase(u.getAIn());
-    retrievedButUnstored.erase(u.getBIn());
-    retrievedButUnstored.erase(u.getAOut());
-    retrievedButUnstored.erase(u.getBOut());
-  }
-}
+// template <>
+// void updateRetrievedButUnstored<qzap::SwapOp>(
+//     llvm::DenseSet<Value> &retrievedButUnstored, const Operation &op) {
+//   if (auto u = mlir::dyn_cast<qzap::SwapOp>(op)) {
+//     retrievedButUnstored.erase(u.getAIn());
+//     retrievedButUnstored.erase(u.getBIn());
+//     retrievedButUnstored.erase(u.getAOut());
+//     retrievedButUnstored.erase(u.getBOut());
+//   }
+// }
 
 /**
  * @brief Verify that the kernel fulfills QIR's base profile and value
