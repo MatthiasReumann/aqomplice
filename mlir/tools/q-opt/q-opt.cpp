@@ -24,60 +24,54 @@
 
 #include "common/CommonInterfaces.cpp.inc" // adds interface methods
 
-namespace {
+using namespace mlir;
 
-struct ZapToPinWithRoutingOptions
-    : mlir::PassPipelineOptions<aqomplice::FitTopologyOptions> {
+namespace {
+struct ToPinOptions : PassPipelineOptions<aqomplice::FitTopologyOptions> {
   Option<std::string> arch{*this, "arch",
                            llvm::cl::desc("The name of the architecture.")};
 };
-
-void zapToPinWithRoutingBuilder(mlir::OpPassManager &pm,
-                                const ZapToPinWithRoutingOptions &options) {
-  pm.addPass(aqomplice::createQZapToQPin());
-  pm.addPass(aqomplice::createFitTopology(
-      aqomplice::FitTopologyOptions{options.arch}));
-  pm.addPass(mlir::createRemoveDeadValuesPass());
-}
-
-void pinToLLVMBuilder(mlir::OpPassManager &pm) {
-  pm.addPass(aqomplice::createQPinToLLVM()); // Quantum Kernels.
-
-  pm.addPass(mlir::createConvertSCFToCFPass()); // Control Flow Elements.
-  pm.addPass(mlir::createConvertControlFlowToLLVMPass());
-
-  pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass()); // MemRefs.
-
-  pm.addPass(mlir::createArithToLLVMConversionPass()); // Indices.
-  pm.addPass(mlir::createConvertIndexToLLVMPass());
-  pm.addPass(mlir::createConvertFuncToLLVMPass()); // Funcs.
-
-  pm.addPass(mlir::createCSEPass());
-  pm.addPass(mlir::createCanonicalizerPass());
-}
 }; // namespace
 
 int main(int argc, char **argv) {
-  mlir::registerAllPasses();
-  aqomplice::registerConversionsPasses();
-  aqomplice::registerTransformsPasses();
-
-  mlir::DialectRegistry registry;
+  DialectRegistry registry;
   registry.insert<aqomplice::q::QDialect, aqomplice::qzap::QZapDialect,
-                  aqomplice::qpin::QPinDialect, mlir::arith::ArithDialect,
-                  mlir::memref::MemRefDialect, mlir::func::FuncDialect,
-                  mlir::index::IndexDialect, mlir::scf::SCFDialect,
-                  mlir::LLVM::LLVMDialect>();
+                  aqomplice::qpin::QPinDialect, arith::ArithDialect,
+                  memref::MemRefDialect, func::FuncDialect, index::IndexDialect,
+                  scf::SCFDialect, LLVM::LLVMDialect>();
 
-  mlir::PassPipelineRegistration<ZapToPinWithRoutingOptions>(
-      "qzap-to-qpin-with-routing",
-      "Lower QZap to QPin and route kernels based on the given architecture.",
-      zapToPinWithRoutingBuilder);
+  PassPipelineRegistration<>(
+      "to-zap", "Lower Q interface dialect to QZap optimization dialect.",
+      [](OpPassManager &pm) {
+        pm.addPass(aqomplice::createQToQZap());
+        pm.addPass(createCanonicalizerPass());
+      });
 
-  mlir::PassPipelineRegistration<>("convert-qpin-to-llvm",
-                                   "Lower all operations to LLVM IR.",
-                                   pinToLLVMBuilder);
+  PassPipelineRegistration<ToPinOptions>(
+      "to-pin", "Lower QZap optimization dialect to QPin routing dialect.",
+      [](OpPassManager &pm, const ToPinOptions &options) {
+        pm.addPass(aqomplice::createQZapToQPin({options.arch}));
+        pm.addPass(aqomplice::createFitTopology({options.arch}));
+        pm.addPass(createRemoveDeadValuesPass());
+      });
 
-  return mlir::asMainReturnCode(
-      mlir::MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
+  PassPipelineRegistration<>(
+      "to-llvm", "Lower all operations to LLVM IR.", [](OpPassManager &pm) {
+        pm.addPass(aqomplice::createQPinToLLVM()); // Quantum Kernels.
+
+        pm.addPass(createConvertSCFToCFPass()); // Control Flow Elements.
+        pm.addPass(createConvertControlFlowToLLVMPass());
+
+        pm.addPass(createFinalizeMemRefToLLVMConversionPass()); // MemRefs.
+
+        pm.addPass(createArithToLLVMConversionPass()); // Indices.
+        pm.addPass(createConvertIndexToLLVMPass());
+        pm.addPass(createConvertFuncToLLVMPass()); // Funcs.
+
+        pm.addPass(createCSEPass());
+        pm.addPass(createCanonicalizerPass());
+      });
+
+  return asMainReturnCode(
+      MlirOptMain(argc, argv, "Q optimizer driver\n", registry));
 }
