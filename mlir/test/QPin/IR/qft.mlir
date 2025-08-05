@@ -1,7 +1,6 @@
 module {
   qpin.kernel @qft(%shared: memref<3xi1>) -> () {    
     // Assign static (device) qubit values.
-
     %q0 = qpin.qubit 0
     %q1 = qpin.qubit 1
     %q2 = qpin.qubit 2

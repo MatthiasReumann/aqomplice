@@ -1,7 +1,5 @@
 module {
-    func.func @ghz(%shared: memref<?x3xi1>, %iv: index) -> () attributes {
-        qpu.kernel = true
-    } {
+    func.func @ghz(%shared: memref<?x3xi1>, %iv: index) -> () attributes {qpu.kernel, no_inline} {
         %nqubits = arith.constant 3 : i32
         
         %c0_i32 = arith.constant 0 : i32
@@ -12,7 +10,7 @@ module {
         %idx1 = index.castu %c1_i32 : i32 to index
         %idx2 = index.castu %c2_i32 : i32 to index
         
-         // Allocate quantum register with `nqubits` qubits.
+        // Allocate quantum register with `nqubits` qubits.
         %r = q.alloc %nqubits
 
         %q0 = q.retrieve %r[%c0_i32]
@@ -21,8 +19,8 @@ module {
         
         // Apply GHZ gates.
         q.h %q0
-        q.x %q1 ctrl %q0
-        q.x %q2 ctrl %q0
+        q.x ctrld %q1, %q0
+        q.x ctrld %q2, %q0
 
         // Measure each qubit.
         %b0 = q.measure %q0
